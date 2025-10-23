@@ -97,7 +97,11 @@ class CertificateIssuanceController extends Controller
         $event = Event::find($validated['event_id']);
         $students = Student::whereIn('id', $sessionData['student_ids'])->get();
 
-        return view('issue.step3', compact('event', 'students'));
+        // Get available templates for the school
+        $user = auth()->user();
+        $availableTemplates = $user->school->certificateTemplates;
+
+        return view('issue.step3', compact('event', 'students', 'availableTemplates'));
     }
 
     /**
@@ -110,12 +114,14 @@ class CertificateIssuanceController extends Controller
         // Handle POST request (coming from step3)
         if ($request->isMethod('post')) {
             $validated = $request->validate([
+                'certificate_template_id' => 'required|exists:certificate_templates,id',
                 'certificate_type' => 'required|in:participation,rank',
                 'ranks' => 'nullable|array',
                 'ranks.*' => 'nullable|string',
                 'student_ids' => 'required|array',
             ]);
 
+            $sessionData['certificate_template_id'] = $validated['certificate_template_id'];
             $sessionData['certificate_type'] = $validated['certificate_type'];
             $sessionData['ranks'] = $validated['ranks'] ?? [];
             $sessionData['selected_student_ids'] = $validated['student_ids'];
@@ -201,7 +207,7 @@ class CertificateIssuanceController extends Controller
                 $certificate = Certificate::create([
                     'student_id' => $student->id,
                     'school_id' => $school->id,
-                    'certificate_template_id' => $event->certificate_template_id ?? $school->certificate_template_id,
+                    'certificate_template_id' => $sessionData['certificate_template_id'],
                     'event_id' => $event->id,
                     'issuer_id' => $user->id,
                     'status' => $user->isIssuer() ? 'pending' : 'approved', // Issuers create pending, admins create approved

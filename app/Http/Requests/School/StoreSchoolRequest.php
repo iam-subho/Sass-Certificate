@@ -25,7 +25,8 @@ class StoreSchoolRequest extends FormRequest
             'name' => 'required|string|max:255',
             'email' => 'required|email|unique:schools,email',
             'phone' => 'required|string|max:20',
-            'certificate_template_id' => 'required|exists:certificate_templates,id',
+            'template_ids' => 'required|array|min:1',
+            'template_ids.*' => 'exists:certificate_templates,id',
             'package_id' => 'nullable|exists:packages,id',
             'logo' => 'nullable|image|mimes:jpeg,png,jpg,webp|max:2048|dimensions:min_width=100,min_height=100',
             'certificate_left_logo' => 'nullable|image|mimes:jpeg,png,jpg,webp|max:2048|dimensions:min_width=100,min_height=100',
@@ -49,7 +50,8 @@ class StoreSchoolRequest extends FormRequest
     public function messages(): array
     {
         return [
-            'certificate_template_id.required' => 'Please select a certificate template.',
+            'template_ids.required' => 'Please select at least one certificate template.',
+            'template_ids.min' => 'Please select at least one certificate template.',
             'admin_email.unique' => 'This email is already registered.',
             'admin_password.min' => 'Admin password must be at least 8 characters.',
             'logo.dimensions' => 'Logo must be at least 100x100 pixels.',

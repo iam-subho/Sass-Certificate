@@ -17,12 +17,12 @@ class SchoolClassController extends Controller
             ->active()
             ->withCount([
                 'students',
-                'students as male_students_count' => function($query) {
+                /*'students as male_students_count' => function($query) {
                     $query->where('gender', 'male');
                 },
                 'students as female_students_count' => function($query) {
                     $query->where('gender', 'female');
-                }
+                }*/
             ])
             ->orderBy('order')
             ->paginate(10);

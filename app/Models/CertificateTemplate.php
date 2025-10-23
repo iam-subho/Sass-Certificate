@@ -24,11 +24,12 @@ class CertificateTemplate extends Model
     }
 
     /**
-     * Get the schools using this template.
+     * Get the schools using this template (many-to-many).
      */
     public function schools()
     {
-        return $this->hasMany(School::class);
+        return $this->belongsToMany(School::class, 'certificate_template_school')
+            ->withTimestamps();
     }
 
     /**

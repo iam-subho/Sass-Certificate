@@ -341,9 +341,19 @@
                             <dd class="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">{{ $school->phone }}</dd>
                         </div>
                         <div class="bg-white px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
-                            <dt class="text-sm font-medium text-gray-500">Certificate Template</dt>
+                            <dt class="text-sm font-medium text-gray-500">Certificate Templates</dt>
                             <dd class="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">
-                                {{ $school->certificateTemplate->name ?? 'N/A' }}
+                                @if($school->certificateTemplates->count() > 0)
+                                    <div class="flex flex-wrap gap-2">
+                                        @foreach($school->certificateTemplates as $template)
+                                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                                                {{ $template->name }}
+                                            </span>
+                                        @endforeach
+                                    </div>
+                                @else
+                                    <span class="text-gray-400">No templates assigned</span>
+                                @endif
                             </dd>
                         </div>
                         <div class="bg-gray-50 px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">

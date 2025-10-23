@@ -45,6 +45,25 @@
         <form action="{{ route('issue.step4') }}" method="POST" id="step3-form">
             @csrf
 
+            <!-- Certificate Template Selection -->
+            <div class="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                <label for="certificate_template_id" class="block text-sm font-medium text-gray-700 mb-3">
+                    Select Certificate Template <span class="text-red-500">*</span>
+                </label>
+                <select name="certificate_template_id" id="certificate_template_id" required class="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                    <option value="">-- Select Template --</option>
+                    @foreach($availableTemplates as $template)
+                        <option value="{{ $template->id }}">
+                            {{ $template->name }}
+                            @if($template->description)
+                                - {{ $template->description }}
+                            @endif
+                        </option>
+                    @endforeach
+                </select>
+                <p class="mt-2 text-xs text-blue-700">Choose which template to use for these certificates</p>
+            </div>
+
             <!-- Certificate Type Selection -->
             <div class="mb-6 p-4 bg-gray-50 rounded-lg">
                 <label class="block text-sm font-medium text-gray-700 mb-3">Certificate Type</label>

@@ -41,18 +41,25 @@
                     @enderror
                 </div>
 
-                <div>
-                    <label for="certificate_template_id" class="block text-sm font-medium text-gray-700">Certificate Template *</label>
-                    <select name="certificate_template_id" id="certificate_template_id" required
-                        class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
-                        <option value="">Select Template</option>
+                <div class="sm:col-span-2">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Certificate Templates *</label>
+                    <div class="mt-2 space-y-2 max-h-48 overflow-y-auto border border-gray-300 rounded-md p-3 bg-gray-50">
                         @foreach($templates as $template)
-                        <option value="{{ $template->id }}" {{ old('certificate_template_id', $school->certificate_template_id) == $template->id ? 'selected' : '' }}>
-                            {{ $template->name }}
-                        </option>
+                        <div class="flex items-center">
+                            <input type="checkbox" name="template_ids[]" id="template_{{ $template->id }}" value="{{ $template->id }}"
+                                {{ (is_array(old('template_ids')) && in_array($template->id, old('template_ids'))) || (!old('template_ids') && $school->certificateTemplates->contains($template->id)) ? 'checked' : '' }}
+                                class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded">
+                            <label for="template_{{ $template->id }}" class="ml-3 text-sm text-gray-700">
+                                {{ $template->name }}
+                                @if($template->description)
+                                    <span class="text-xs text-gray-500">({{ $template->description }})</span>
+                                @endif
+                            </label>
+                        </div>
                         @endforeach
-                    </select>
-                    @error('certificate_template_id')
+                    </div>
+                    <p class="mt-1 text-xs text-gray-500">Select one or more templates that this school can use</p>
+                    @error('template_ids')
                     <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
                     @enderror
                 </div>

@@ -22,7 +22,7 @@ class SchoolController extends Controller
      */
     public function index()
     {
-        $schools = School::with(['certificateTemplate:id,name', 'package:id,name', 'admins:id,name,school_id'])
+        $schools = School::with(['certificateTemplates:id,name', 'package:id,name', 'admins:id,name,school_id'])
             ->paginate(15);
         return view('schools.index', compact('schools'));
     }
@@ -57,7 +57,7 @@ class SchoolController extends Controller
             }
 
             // Create school
-            $schoolData = collect($validated)->except(['admin_name', 'admin_email', 'admin_password'])->toArray();
+            $schoolData = collect($validated)->except(['admin_name', 'admin_email', 'admin_password', 'template_ids'])->toArray();
 
             // If package is assigned, set plan details
             if (!empty($validated['package_id'])) {
@@ -72,6 +72,11 @@ class SchoolController extends Controller
             }
 
             $school = School::create($schoolData);
+
+            // Attach certificate templates
+            if (!empty($validated['template_ids'])) {
+                $school->certificateTemplates()->attach($validated['template_ids']);
+            }
 
             // Create school admin user
             User::create([
@@ -102,7 +107,7 @@ class SchoolController extends Controller
     public function show(School $school)
     {
         $school->load([
-            'certificateTemplate',
+            'certificateTemplates',
             'admins',
             'issuers',
             'classes',
@@ -209,7 +214,16 @@ class SchoolController extends Controller
                 unset($validated['status']);
             }
 
-            $school->update($validated);
+            // Extract template_ids before updating
+            $templateIds = $validated['template_ids'] ?? [];
+            $updateData = collect($validated)->except(['template_ids'])->toArray();
+
+            $school->update($updateData);
+
+            // Sync certificate templates
+            if (!empty($templateIds)) {
+                $school->certificateTemplates()->sync($templateIds);
+            }
 
             // Create invoice only if package changed
             if ($packageChanged) {

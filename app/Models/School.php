@@ -14,7 +14,6 @@ class School extends Model
         'email',
         'phone',
         'logo',
-        'certificate_template_id',
         'package_id',
         'certificate_left_logo',
         'certificate_right_logo',
@@ -46,11 +45,21 @@ class School extends Model
     }
 
     /**
-     * Get the certificate template for the school.
+     * Get the certificate templates for the school (many-to-many).
      */
-    public function certificateTemplate()
+    public function certificateTemplates()
     {
-        return $this->belongsTo(CertificateTemplate::class);
+        return $this->belongsToMany(CertificateTemplate::class, 'certificate_template_school')
+            ->withTimestamps();
+    }
+
+    /**
+     * Helper method: Get the first certificate template.
+     * Use this as a helper, not as a relationship.
+     */
+    public function getFirstTemplateAttribute()
+    {
+        return $this->certificateTemplates->first();
     }
 
     /**
