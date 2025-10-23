@@ -28,7 +28,27 @@
 
     <div class="bg-white shadow overflow-hidden sm:rounded-lg">
         <div class="px-4 py-5 sm:p-6">
-            <div class="overflow-auto">
+            <style>
+                /* Ensure scrolling works properly - override template CSS */
+                html, body {
+                    overflow-y: auto !important;
+                    overflow-x: auto !important;
+                }
+
+                /* Ensure the preview container is scrollable */
+                #template-preview-container {
+                    overflow: visible !important;
+                    position: relative !important;
+                }
+
+                /* Override template's overflow hidden */
+                #template-preview-container body,
+                #template-preview-container .certificate-page {
+                    overflow: visible !important;
+                    position: static !important;
+                }
+            </style>
+            <div id="template-preview-container" class="overflow-auto">
                 {!! $html !!}
             </div>
         </div>

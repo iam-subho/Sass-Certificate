@@ -35,6 +35,7 @@
                 <div class="mb-2 bg-blue-50 border border-blue-200 rounded-md p-4">
                     <p class="text-sm text-blue-800 font-medium mb-2">Available Placeholders:</p>
                     <div class="grid grid-cols-3 gap-2 text-xs text-blue-700">
+                        <div class="col-span-3 font-semibold text-blue-900 mt-2">Student Information:</div>
                         <code>@{{ first_name }}</code>
                         <code>@{{ last_name }}</code>
                         <code>@{{ full_name }}</code>
@@ -43,12 +44,26 @@
                         <code>@{{ mother_name }}</code>
                         <code>@{{ mobile }}</code>
                         <code>@{{ email }}</code>
+
+                        <div class="col-span-3 font-semibold text-blue-900 mt-2">School Information:</div>
                         <code>@{{ school_name }}</code>
                         <code>@{{ school_email }}</code>
                         <code>@{{ school_phone }}</code>
+                        <code>@{{ school_logo }}</code>
+
+                        <div class="col-span-3 font-semibold text-blue-900 mt-2">Event Information:</div>
+                        <code>@{{ event_name }}</code>
+                        <code>@{{ event_type }}</code>
+                        <code>@{{ event_date }}</code>
+                        <code>@{{ event_description }}</code>
+                        <code>@{{ rank }}</code>
+
+                        <div class="col-span-3 font-semibold text-blue-900 mt-2">Certificate Information:</div>
                         <code>@{{ certificate_id }}</code>
                         <code>@{{ issued_date }}</code>
                         <code>@{{ qr_code }}</code>
+
+                        <div class="col-span-3 font-semibold text-blue-900 mt-2">Logos & Signatures:</div>
                         <code>@{{ certificate_left_logo }}</code>
                         <code>@{{ certificate_right_logo }}</code>
                         <code>@{{ signature_left }}</code>

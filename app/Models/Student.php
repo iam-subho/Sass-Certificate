@@ -40,7 +40,7 @@ class Student extends Model
     /**
      * Get the class that the student belongs to.
      */
-    public function schoolClass()
+    public function class()
     {
         return $this->belongsTo(SchoolClass::class, 'class_id');
     }

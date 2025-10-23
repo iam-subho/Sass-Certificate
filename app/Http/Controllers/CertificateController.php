@@ -234,6 +234,9 @@ class CertificateController extends Controller
             'qr_code' => $qrCodeDataUri,
             // Event and rank information
             'event_name' => $certificate->event ? $certificate->event->name : 'General Certificate',
+            'event_type' => $certificate->event ? ucfirst($certificate->event->event_type) : '',
+            'event_date' => $certificate->event && $certificate->event->event_date ? $certificate->event->event_date->format('d M Y') : '',
+            'event_description' => $certificate->event ? ($certificate->event->description ?? '') : '',
             'rank' => $certificate->rank ?? 'Participation',
             // Convert images to base64 data URIs for PDF compatibility
             'school_logo' => $this->imageToDataUri($school->logo),
