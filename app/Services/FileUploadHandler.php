@@ -6,6 +6,7 @@ use Illuminate\Http\Request;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Database\Eloquent\Model;
+use Str;
 
 class FileUploadHandler
 {
@@ -28,9 +29,10 @@ class FileUploadHandler
      * @param UploadedFile|null $file
      * @param string|null $oldPath
      * @param string $storagePath
+     * @param string|null $customPrefix
      * @return string|null
      */
-    public function handleUpload(?UploadedFile $file, ?string $oldPath = null, string $storagePath = 'uploads'): ?string
+    public function handleUpload(?UploadedFile $file, ?string $oldPath = null, string $storagePath = 'uploads', ?string $customPrefix = null): ?string
     {
         if (!$file) {
             return null;
@@ -41,7 +43,13 @@ class FileUploadHandler
             $this->deleteFile($oldPath);
         }
 
-        // Store new file
+        // Store new file with custom name if prefix provided
+        if ($customPrefix) {
+            $customFileName = $this->generateCustomFileName($file, $customPrefix);
+            return $file->storeAs($storagePath, $customFileName, $this->disk);
+        }
+
+        // Store new file with default random name
         return $file->store($storagePath, $this->disk);
     }
 
@@ -51,9 +59,10 @@ class FileUploadHandler
      * @param Request $request
      * @param array $fields
      * @param Model|null $model
+     * @param string|null $customPrefix
      * @return array
      */
-    public function handleMultipleUploads(Request $request, array $fields, ?Model $model = null): array
+    public function handleMultipleUploads(Request $request, array $fields, ?Model $model = null, ?string $customPrefix = null): array
     {
         $uploadedFiles = [];
 
@@ -65,7 +74,8 @@ class FileUploadHandler
                 $uploadedFiles[$field] = $this->handleUpload(
                     $request->file($field),
                     $oldPath,
-                    $storagePath
+                    $storagePath,
+                    $customPrefix
                 );
             }
         }
@@ -83,7 +93,14 @@ class FileUploadHandler
     public function handleSchoolUploads(Request $request, ?Model $school = null): array
     {
         $fields = config('uploads.school_fields', []);
-        return $this->handleMultipleUploads($request, $fields, $school);
+
+        // Generate custom prefix from school name if school exists
+        $customPrefix = null;
+        if ($school && isset($school->name)) {
+            $customPrefix = $this->sanitizeFileName($school->name);
+        }
+
+        return $this->handleMultipleUploads($request, $fields, $school, $customPrefix);
     }
 
     /**
@@ -189,5 +206,46 @@ class FileUploadHandler
         }
 
         return Storage::disk($this->disk)->exists($path);
+    }
+
+    /**
+     * Generate custom filename with prefix
+     *
+     * @param UploadedFile $file
+     * @param string $prefix
+     * @return string
+     */
+    protected function generateCustomFileName(UploadedFile $file, string $prefix): string
+    {
+        $hash = Str::random(20);
+
+        // Get file extension
+        $extension = $file->guessExtension() ?: $file->getClientOriginalExtension();
+
+        // Return format: prefix_hash.extension
+        return sprintf('%s_%s.%s', $prefix, $hash, $extension);
+    }
+
+    /**
+     * Sanitize filename to remove special characters
+     *
+     * @param string $name
+     * @return string
+     */
+    protected function sanitizeFileName(string $name): string
+    {
+        // Convert to lowercase
+        $name = strtolower($name);
+
+        // Replace spaces with underscores
+        $name = str_replace(' ', '_', $name);
+
+        // Remove special characters, keep only alphanumeric and underscores
+        $name = preg_replace('/[^a-z0-9_]/', '', $name);
+
+        // Limit length to 50 characters
+        $name = substr($name, 0, 50);
+
+        return $name;
     }
 }

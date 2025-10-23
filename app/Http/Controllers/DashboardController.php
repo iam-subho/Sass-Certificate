@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Invoice;
 use App\Models\School;
 use App\Models\Student;
 use App\Models\Certificate;
@@ -40,6 +41,8 @@ class DashboardController extends Controller
             'total_certificates' => Certificate::count(),
             'total_templates' => CertificateTemplate::count(),
             'certificates_this_month' => Certificate::whereMonth('issued_at', now()->month)->count(),
+            'invoices_this_month' => Invoice::whereMonth('created_at', now()->month)->count(),
+            'invoices_pending_this_month' => Invoice::pending()->whereMonth('created_at', now()->month)->count(),
         ];
 
         $recentSchools = School::latest()->take(5)->get();

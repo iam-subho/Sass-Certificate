@@ -35,6 +35,12 @@ class Invoice extends Model
         ];
     }
 
+
+    public function scopePending($query)
+    {
+        return $query->where('status', 'pending');
+    }
+
     /**
      * Get the school that owns the invoice.
      */

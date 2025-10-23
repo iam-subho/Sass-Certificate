@@ -141,7 +141,7 @@
                 </div>
                 <div class="ml-5 w-0 flex-1">
                     <dl>
-                        <dt class="text-sm font-medium text-gray-500 truncate">This Month</dt>
+                        <dt class="text-sm font-medium text-gray-500 truncate">Certificate This Month</dt>
                         <dd class="text-2xl font-bold text-gray-900">{{ number_format($stats['certificates_this_month']) }}</dd>
                     </dl>
                 </div>
@@ -161,13 +161,13 @@
                 </div>
                 <div class="ml-5 w-0 flex-1">
                     <dl>
-                        <dt class="text-sm font-medium text-gray-500 truncate">System Health</dt>
-                        <dd class="text-2xl font-bold text-green-600">Good</dd>
+                        <dt class="text-sm font-medium text-gray-500 truncate">Invoices This Month</dt>
+                        <dd class="text-2xl font-bold text-green-600">{{ number_format($stats['invoices_this_month']) }}</dd>
                     </dl>
                 </div>
             </div>
             <div class="mt-4">
-                <span class="text-sm text-gray-500">All systems operational</span>
+                <a href="{{ route('invoices.index') }}" class="text-sm text-gray-500 hover:text-gray-800">View all →</a>
             </div>
         </div>
     </div>
