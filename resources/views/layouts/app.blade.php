@@ -97,12 +97,14 @@
                             <div class="px-4 py-2 text-xs text-gray-400">
                                 {{ auth()->user()->email }}
                             </div>
+                            @if(!auth()->user()->isSuperAdmin())
                             <a href="{{ route('school.profile') }}" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
-                                Profile
+                               Profile
                             </a>
                             <a href="{{ route('invoices.index') }}" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
                                 Invoices
                             </a>
+                            @endif
                             <a href="{{ route('password.change') }}" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
                                 Change Password
                             </a>

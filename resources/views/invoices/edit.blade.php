@@ -61,6 +61,15 @@
                     @enderror
                 </div>
 
+                <!-- Transaction ID -->
+                <div id="transaction_id_field"  style="display: none;">
+                    <label for="transaction_id" class="block text-sm font-medium text-gray-700">Notes</label>
+                    <input name="transaction_id" id="transaction_id" value="{{ old('transaction_id', $invoice->transaction_id) }}" class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500" placeholder="Transaction id..." />
+                    @error('transaction_id')
+                    <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                    @enderror
+                </div>
+
                 <!-- Notes -->
                 <div>
                     <label for="notes" class="block text-sm font-medium text-gray-700">Notes</label>
@@ -88,14 +97,17 @@ document.addEventListener('DOMContentLoaded', function() {
     const statusSelect = document.getElementById('status');
     const paidDateField = document.getElementById('paid_date_field');
     const paymentMethodField = document.getElementById('payment_method_field');
+    const transactionIdField = document.getElementById('transaction_id_field');
 
     function togglePaymentFields() {
         if (statusSelect.value === 'paid') {
             paidDateField.style.display = 'block';
             paymentMethodField.style.display = 'block';
+            transactionIdField.style.display = 'block';
         } else {
             paidDateField.style.display = 'none';
             paymentMethodField.style.display = 'none';
+            transactionIdField.style.display = 'none';
         }
     }
 

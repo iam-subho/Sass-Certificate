@@ -6,13 +6,15 @@ use App\Models\Certificate;
 use App\Models\SchoolClass;
 use App\Models\Student;
 use App\Models\Event;
+use App\Enums\CertificateStatus;
 use App\Jobs\SendCertificateEmail;
 use App\Jobs\SendCertificateWhatsApp;
+use App\Traits\HandlesTransactions;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
 
 class CertificateIssuanceController extends Controller
 {
+    use HandlesTransactions;
     /**
      * Step 1: Select Class/Section → Load Students
      */
@@ -113,9 +115,11 @@ class CertificateIssuanceController extends Controller
 
         // Handle POST request (coming from step3)
         if ($request->isMethod('post')) {
+            $certificateTypes = array_values(config('certificates.types'));
+
             $validated = $request->validate([
                 'certificate_template_id' => 'required|exists:certificate_templates,id',
-                'certificate_type' => 'required|in:participation,rank',
+                'certificate_type' => 'required|in:' . implode(',', $certificateTypes),
                 'ranks' => 'nullable|array',
                 'ranks.*' => 'nullable|string',
                 'student_ids' => 'required|array',
@@ -157,116 +161,146 @@ class CertificateIssuanceController extends Controller
         $user = auth()->user();
         $school = $user->school;
 
-        // Check if school is approved
-        if (!$school->isApproved()) {
-            return back()->with('error', 'Your school is not approved yet.');
-        }
-
-        // Check if plan is expired
-        if ($school->isPlanExpired()) {
-            return back()->with('error', 'Your subscription plan has expired.');
-        }
-
-        // Check certificate limit
-        $certificateCount = count($sessionData['selected_student_ids']);
-        if ($school->certificates_issued_this_month + $certificateCount > $school->monthly_certificate_limit) {
-            return back()->with('error', 'Certificate limit exceeded. Please upgrade your plan.');
+        // Validate school status and limits
+        $validationError = $this->validateSchoolForIssuance($school, count($sessionData['selected_student_ids']));
+        if ($validationError) {
+            return back()->with('error', $validationError);
         }
 
         $event = Event::find($sessionData['event_id']);
         $students = Student::whereIn('id', $sessionData['selected_student_ids'])->get();
 
-        DB::beginTransaction();
-        try {
+        return $this->executeInTransaction(function () use ($request, $validated, $sessionData, $user, $school, $event, $students) {
             $certificates = [];
             $skippedStudents = [];
-            $preventDuplicates = config('certificates.prevent_duplicate_per_event', true);
+            $preventDuplicates = config('certificates.prevent_duplicate_per_event');
 
             foreach ($students as $student) {
                 // Check for duplicate certificate if prevention is enabled
-                if ($preventDuplicates) {
-                    $existingCertificate = Certificate::where('student_id', $student->id)
-                        ->where('event_id', $event->id)
-                        ->first();
-
-                    if ($existingCertificate) {
-                        $skippedStudents[] = $student->full_name;
-                        continue; // Skip this student
-                    }
-                }
-
-                // Determine rank
-                $rank = null;
-                if ($sessionData['certificate_type'] === 'rank') {
-                    $rank = $sessionData['ranks'][$student->id] ?? 'Participation';
-                } else {
-                    $rank = 'Participation';
+                if ($preventDuplicates && $this->isDuplicateCertificate($student->id, $event->id)) {
+                    $skippedStudents[] = $student->full_name;
+                    continue;
                 }
 
                 // Create certificate
-                $certificate = Certificate::create([
-                    'student_id' => $student->id,
-                    'school_id' => $school->id,
-                    'certificate_template_id' => $sessionData['certificate_template_id'],
-                    'event_id' => $event->id,
-                    'issuer_id' => $user->id,
-                    'status' => $user->isIssuer() ? 'pending' : 'approved', // Issuers create pending, admins create approved
-                    'rank' => $rank,
-                    'issued_at' => now(),
-                    'approved_at' => $user->isIssuer() ? null : now(),
-                    'approved_by' => $user->isIssuer() ? null : $user->id,
-                ]);
-
+                $certificate = $this->createCertificate($student, $school, $event, $user, $sessionData);
                 $certificates[] = $certificate;
             }
 
             // If no certificates were created
             if (empty($certificates)) {
-                DB::rollBack();
-                $message = 'No certificates were generated. All selected students already have certificates for this event.';
-                return back()->with('error', $message);
+                return back()->with('error', 'No certificates were generated. All selected students already have certificates for this event.');
             }
 
-            // Update school's monthly count with actual certificates created
-            $actualCertificateCount = count($certificates);
-            $school->increment('certificates_issued_this_month', $actualCertificateCount);
+            // Update school's monthly count
+            $school->increment('certificates_issued_this_month', count($certificates));
 
-            DB::commit();
-
-            // Queue email/WhatsApp sending if requested
-            if ($validated['send_email'] ?? false) {
-                foreach ($certificates as $certificate) {
-                    // Dispatch email job
-                    dispatch(new SendCertificateEmail($certificate));
-                }
-            }
-
-            if ($validated['send_whatsapp'] ?? false) {
-                foreach ($certificates as $certificate) {
-                    // Dispatch WhatsApp job
-                    dispatch(new SendCertificateWhatsApp($certificate));
-                }
-            }
+            // Dispatch notifications
+            $this->dispatchNotifications($certificates, $validated);
 
             // Clear session
             session()->forget('certificate_issuance');
 
             // Build success message
-            $message = $user->isIssuer()
-                ? "{$actualCertificateCount} certificate(s) created successfully and sent for approval."
-                : "{$actualCertificateCount} certificate(s) generated successfully.";
-
-            // Add warning about skipped students if any
-            if (!empty($skippedStudents)) {
-                $skippedNames = implode(', ', $skippedStudents);
-                $message .= " Note: Duplicate certificates were skipped for: {$skippedNames}";
-            }
+            $message = $this->buildSuccessMessage($user, count($certificates), $skippedStudents);
 
             return redirect()->route('certificates.index')->with('success', $message);
+        }) ?? back()->with('error', 'Failed to generate certificates.');
+    }
 
-        } catch (\Exception $e) {
-            DB::rollBack();
-            return back()->with('error', 'Failed to generate certificates: ' . $e->getMessage());
+    /**
+     * Validate school status and certificate limits
+     */
+    protected function validateSchoolForIssuance($school, int $certificateCount): ?string
+    {
+        if (!$school->isApproved()) {
+            return 'Your school is not approved yet.';
         }
+
+        if ($school->isPlanExpired()) {
+            return 'Your subscription plan has expired.';
+        }
+
+        if ($school->certificates_issued_this_month + $certificateCount > $school->monthly_certificate_limit) {
+            return 'Certificate limit exceeded. Please upgrade your plan.';
+        }
+
+        return null;
+    }
+
+    /**
+     * Check if certificate already exists for student and event
+     */
+    protected function isDuplicateCertificate(int $studentId, int $eventId): bool
+    {
+        return Certificate::where('student_id', $studentId)
+            ->where('event_id', $eventId)
+            ->exists();
+    }
+
+    /**
+     * Create a certificate
+     */
+    protected function createCertificate($student, $school, $event, $user, array $sessionData): Certificate
+    {
+        $rank = $this->determineRank($sessionData, $student->id);
+
+        return Certificate::create([
+            'student_id' => $student->id,
+            'school_id' => $school->id,
+            'certificate_template_id' => $sessionData['certificate_template_id'],
+            'event_id' => $event->id,
+            'issuer_id' => $user->id,
+            'status' => $user->isIssuer() ? CertificateStatus::PENDING->value : CertificateStatus::APPROVED->value,
+            'rank' => $rank,
+            'issued_at' => now(),
+            'approved_at' => $user->isIssuer() ? null : now(),
+            'approved_by' => $user->isIssuer() ? null : $user->id,
+        ]);
+    }
+
+    /**
+     * Determine rank for certificate
+     */
+    protected function determineRank(array $sessionData, int $studentId): string
+    {
+        if ($sessionData['certificate_type'] === config('certificates.types.rank')) {
+            return $sessionData['ranks'][$studentId] ?? 'Participation';
+        }
+
+        return 'Participation';
+    }
+
+    /**
+     * Dispatch email and WhatsApp notifications
+     */
+    protected function dispatchNotifications(array $certificates, array $options): void
+    {
+        foreach ($certificates as $certificate) {
+            if ($options['send_email'] ?? false) {
+                dispatch(new SendCertificateEmail($certificate));
+            }
+
+            if ($options['send_whatsapp'] ?? false) {
+                dispatch(new SendCertificateWhatsApp($certificate));
+            }
+        }
+    }
+
+    /**
+     * Build success message
+     */
+    protected function buildSuccessMessage($user, int $count, array $skippedStudents): string
+    {
+        $message = $user->isIssuer()
+            ? "{$count} certificate(s) created successfully and sent for approval."
+            : "{$count} certificate(s) generated successfully.";
+
+        if (!empty($skippedStudents)) {
+            $skippedNames = implode(', ', $skippedStudents);
+            $message .= " Note: Duplicate certificates were skipped for: {$skippedNames}";
+        }
+
+        return $message;
     }
 }

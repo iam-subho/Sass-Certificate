@@ -32,6 +32,7 @@ class UpdateInvoiceRequest extends FormRequest
             'status' => 'sometimes|in:pending,paid,cancelled',
             'paid_date' => 'nullable|date',
             'payment_method' => 'nullable|string|max:255',
+            'transaction_id' => 'nullable|string|max:255',
             'notes' => 'nullable|string|max:1000',
             'amount' => 'sometimes|numeric|min:0',
             'due_date' => 'sometimes|date',

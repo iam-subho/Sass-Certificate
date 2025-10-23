@@ -29,7 +29,7 @@ class UpdateSchoolRequest extends FormRequest
             'phone' => 'required|string|max:20',
             'template_ids' => 'required|array|min:1',
             'template_ids.*' => 'exists:certificate_templates,id',
-            'package_id' => 'nullable|exists:packages,id',
+            'package_id' => 'required|exists:packages,id',
             'logo' => 'nullable|image|mimes:jpeg,png,jpg,webp|max:2048|dimensions:min_width=100,min_height=100',
             'certificate_left_logo' => 'nullable|image|mimes:jpeg,png,jpg,webp|max:2048|dimensions:min_width=100,min_height=100',
             'certificate_right_logo' => 'nullable|image|mimes:jpeg,png,jpg,webp|max:2048|dimensions:min_width=100,min_height=100',
@@ -53,6 +53,8 @@ class UpdateSchoolRequest extends FormRequest
             'template_ids.required' => 'Please select at least one certificate template.',
             'template_ids.min' => 'Please select at least one certificate template.',
             'logo.dimensions' => 'Logo must be at least 100x100 pixels.',
+            'package_id.required' => 'Please select at least one package.',
+            'package_id.exists' => 'Selected package does not exist.',
         ];
     }
 }

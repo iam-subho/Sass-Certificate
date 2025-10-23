@@ -8,22 +8,32 @@ use App\Models\School;
 use App\Models\User;
 use App\Models\CertificateTemplate;
 use App\Models\Package;
-use App\Models\Invoice;
-use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Storage;
+use App\Enums\SchoolStatus;
+use App\Enums\UserRole;
+use App\Services\FileUploadHandler;
+use App\Services\InvoiceService;
+use App\Traits\HandlesTransactions;
 use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Facades\DB;
-use Str;
 
 class SchoolController extends Controller
 {
+    use HandlesTransactions;
+
+    protected FileUploadHandler $fileUploadHandler;
+    protected InvoiceService $invoiceService;
+
+    public function __construct(FileUploadHandler $fileUploadHandler, InvoiceService $invoiceService)
+    {
+        $this->fileUploadHandler = $fileUploadHandler;
+        $this->invoiceService = $invoiceService;
+    }
     /**
      * Display a listing of schools.
      */
     public function index()
     {
         $schools = School::with(['certificateTemplates:id,name', 'package:id,name', 'admins:id,name,school_id'])
-            ->paginate(15);
+            ->paginate(config('pagination.schools'));
         return view('schools.index', compact('schools'));
     }
 
@@ -44,61 +54,55 @@ class SchoolController extends Controller
     {
         $validated = $request->validated();
 
-        DB::beginTransaction();
-        try {
-            // Handle file uploads
-            $fileFields = ['logo', 'certificate_left_logo', 'certificate_right_logo',
-                           'signature_left', 'signature_middle', 'signature_right'];
+        return $this->executeInTransactionWithRedirect(
+            function () use ($request, $validated) {
+                // Handle file uploads
+                $uploadedFiles = $this->fileUploadHandler->handleSchoolUploads($request);
 
-            foreach ($fileFields as $field) {
-                if ($request->hasFile($field)) {
-                    $validated[$field] = $request->file($field)->store('schools', 'public');
+                // Create school
+                $schoolData = collect($validated)
+                    ->except(['admin_name', 'admin_email', 'admin_password', 'template_ids'])
+                    ->merge($uploadedFiles)
+                    ->toArray();
+
+                // If package is assigned, set plan details
+                if (!empty($validated['package_id'])) {
+                    $package = Package::find($validated['package_id']);
+                    if ($package) {
+                        $schoolData['plan_type'] = 'paid';
+                        $schoolData['plan_start_date'] = now();
+                        $schoolData['plan_expiry_date'] = now()->addMonths($package->duration_months);
+                        $schoolData['monthly_certificate_limit'] = $package->monthly_certificate_limit;
+                        $schoolData['certificates_issued_this_month'] = 0;
+                    }
                 }
-            }
 
-            // Create school
-            $schoolData = collect($validated)->except(['admin_name', 'admin_email', 'admin_password', 'template_ids'])->toArray();
+                $school = School::create($schoolData);
 
-            // If package is assigned, set plan details
-            if (!empty($validated['package_id'])) {
-                $package = Package::find($validated['package_id']);
-                if ($package) {
-                    $schoolData['plan_type'] = 'paid';
-                    $schoolData['plan_start_date'] = now();
-                    $schoolData['plan_expiry_date'] = now()->addMonths($package->duration_months);
-                    $schoolData['monthly_certificate_limit'] = $package->monthly_certificate_limit;
-                    $schoolData['certificates_issued_this_month'] = 0;
+                // Attach certificate templates
+                if (!empty($validated['template_ids'])) {
+                    $school->certificateTemplates()->attach($validated['template_ids']);
                 }
-            }
 
-            $school = School::create($schoolData);
+                // Create school admin user
+                User::create([
+                    'name' => $validated['admin_name'],
+                    'email' => $validated['admin_email'],
+                    'password' => Hash::make($validated['admin_password']),
+                    'role' => UserRole::SCHOOL_ADMIN->value,
+                    'school_id' => $school->id,
+                    'is_active' => true,
+                ]);
 
-            // Attach certificate templates
-            if (!empty($validated['template_ids'])) {
-                $school->certificateTemplates()->attach($validated['template_ids']);
-            }
-
-            // Create school admin user
-            User::create([
-                'name' => $validated['admin_name'],
-                'email' => $validated['admin_email'],
-                'password' => Hash::make($validated['admin_password']),
-                'role' => 'school_admin',
-                'school_id' => $school->id,
-                'is_active' => true,
-            ]);
-
-            // Always create initial invoice based on package
-            $this->createInitialInvoice($school, $validated);
-
-            DB::commit();
-
-            return redirect()->route('schools.index')
-                ->with('success', 'School and admin account created successfully.');
-        } catch (\Exception $e) {
-            DB::rollBack();
-            return back()->withInput()->with('error', 'Failed to create school: ' . $e->getMessage());
-        }
+                // Create initial invoice if package is assigned
+                if (!empty($validated['package_id'])) {
+                    $this->invoiceService->createInitialInvoice($school, $validated);
+                }
+            },
+            'schools.index',
+            'School and admin account created successfully.',
+            'Failed to create school'
+        );
     }
 
     /**
@@ -119,24 +123,14 @@ class SchoolController extends Controller
         $stats = [
             'total_students' => $school->students()->count(),
             'total_certificates' => $school->certificates()->count(),
-            'pending_certificates' => $school->certificates()->where('status', 'pending')->count(),
-            'approved_certificates' => $school->certificates()->where('status', 'approved')->count(),
+            'pending_certificates' => $school->certificates()->where('status', config('statuses.certificate.pending'))->count(),
+            'approved_certificates' => $school->certificates()->where('status', config('statuses.certificate.approved'))->count(),
             'total_classes' => $school->classes()->count(),
             'total_events' => $school->events()->count(),
         ];
 
-        // Get invoice statistics
-        $invoiceStats = [
-            'total_invoices' => $school->invoices()->count(),
-            'pending_invoices' => $school->invoices()->where('status', 'pending')->count(),
-            'paid_invoices' => $school->invoices()->where('status', 'paid')->count(),
-            'overdue_invoices' => $school->invoices()
-                ->where('status', 'pending')
-                ->where('due_date', '<', now())
-                ->count(),
-            'total_paid_amount' => $school->invoices()->where('status', 'paid')->sum('amount'),
-            'pending_amount' => $school->invoices()->where('status', 'pending')->sum('amount'),
-        ];
+        // Get invoice statistics using InvoiceService
+        $invoiceStats = $this->invoiceService->getSchoolInvoiceSummary($school);
 
         // Get recent invoices
         $recentInvoices = $school->invoices()->latest()->limit(5)->get();
@@ -161,83 +155,70 @@ class SchoolController extends Controller
     {
         $validated = $request->validated();
 
-        DB::beginTransaction();
-        try {
-            // Handle file uploads
-            $fileFields = ['logo', 'certificate_left_logo', 'certificate_right_logo',
-                           'signature_left', 'signature_middle', 'signature_right'];
+        return $this->executeInTransactionWithRedirect(
+            function () use ($request, $validated, $school) {
+                // Handle file uploads
+                $uploadedFiles = $this->fileUploadHandler->handleSchoolUploads($request, $school);
 
-            foreach ($fileFields as $field) {
-                if ($request->hasFile($field)) {
-                    // Delete old file
-                    if ($school->$field) {
-                        Storage::disk('public')->delete($school->$field);
-                    }
-                    $validated[$field] = $request->file($field)->store('schools', 'public');
-                }
-            }
+                // Track if package changed for invoice generation
+                $packageChanged = $request->has('package_id') && $request->package_id != $school->package_id;
 
-            // Track if package changed for invoice generation
-            $packageChanged = false;
-
-            // Handle package change - update plan details
-            if ($request->has('package_id') && $request->package_id != $school->package_id) {
-                $packageChanged = true;
-
-                if (!empty($request->package_id)) {
-                    $package = Package::find($request->package_id);
-                    if ($package) {
-                        $validated['plan_type'] = 'package';
-                        $validated['plan_start_date'] = now();
-                        $validated['plan_expiry_date'] = now()->addMonths($package->duration_months);
-                        $validated['monthly_certificate_limit'] = $package->monthly_certificate_limit;
+                // Handle package change - update plan details
+                if ($packageChanged) {
+                    if (!empty($request->package_id)) {
+                        $package = Package::find($request->package_id);
+                        if ($package) {
+                            $validated['plan_type'] = 'package';
+                            $validated['plan_start_date'] = now();
+                            $validated['plan_expiry_date'] = now()->addMonths($package->duration_months);
+                            $validated['monthly_certificate_limit'] = $package->monthly_certificate_limit;
+                            $validated['certificates_issued_this_month'] = $school->certificates_issued_this_month;
+                        }
+                    } else {
+                        $validated['plan_type'] = 'free';
+                        $validated['plan_start_date'] = null;
+                        $validated['plan_expiry_date'] = null;
+                        $validated['monthly_certificate_limit'] = config('certificates.default_monthly_limit');
                         $validated['certificates_issued_this_month'] = $school->certificates_issued_this_month;
                     }
+                }
+
+                // Handle status update for super admin
+                if (auth()->user()->isSuperAdmin() && $request->has('status')) {
+                    // If changing to approved, set approved_at and approved_by
+                    if ($request->status == SchoolStatus::APPROVED->value && $school->status != SchoolStatus::APPROVED->value) {
+                        $validated['approved_at'] = now();
+                        $validated['approved_by'] = auth()->id();
+                    }
                 } else {
-                    $validated['plan_type'] = 'free';
-                    $validated['plan_start_date'] = null;
-                    $validated['plan_expiry_date'] = null;
-                    $validated['monthly_certificate_limit'] = 10;
-                    $validated['certificates_issued_this_month'] = $school->certificates_issued_this_month;
+                    // Remove status from validated data if not super admin
+                    unset($validated['status']);
                 }
-            }
 
-            // Handle status update for super admin
-            if (auth()->user()->isSuperAdmin() && $request->has('status')) {
-                // If changing to approved, set approved_at and approved_by
-                if ($request->status == 'approved' && $school->status != 'approved') {
-                    $validated['approved_at'] = now();
-                    $validated['approved_by'] = auth()->id();
+                // Extract template_ids before updating
+                $templateIds = $validated['template_ids'] ?? [];
+                $updateData = collect($validated)
+                    ->except(['template_ids'])
+                    ->merge($uploadedFiles)
+                    ->toArray();
+
+                $school->update($updateData);
+
+                // Sync certificate templates
+                if (!empty($templateIds)) {
+                    $school->certificateTemplates()->sync($templateIds);
                 }
-            } else {
-                // Remove status from validated data if not super admin
-                unset($validated['status']);
-            }
 
-            // Extract template_ids before updating
-            $templateIds = $validated['template_ids'] ?? [];
-            $updateData = collect($validated)->except(['template_ids'])->toArray();
-
-            $school->update($updateData);
-
-            // Sync certificate templates
-            if (!empty($templateIds)) {
-                $school->certificateTemplates()->sync($templateIds);
-            }
-
-            // Create invoice only if package changed
-            if ($packageChanged) {
-                $this->createInitialInvoice($school, $validated);
-            }
-
-            DB::commit();
-
-            return redirect()->route('schools.index')
-                ->with('success', 'School updated successfully.');
-        } catch (\Exception $e) {
-            DB::rollBack();
-            return back()->withInput()->with('error', 'Failed to update school: ' . $e->getMessage());
-        }
+                // Create invoice only if package changed
+                if ($packageChanged && !empty($request->package_id)) {
+                    $package = Package::find($request->package_id)->toArray();
+                    $this->invoiceService->createInitialInvoice($school, $validated);
+                }
+            },
+            'schools.index',
+            'School updated successfully.',
+            'Failed to update school'
+        );
     }
 
     /**
@@ -246,14 +227,7 @@ class SchoolController extends Controller
     public function destroy(School $school)
     {
         // Delete associated files
-        $fileFields = ['logo', 'certificate_left_logo', 'certificate_right_logo',
-                       'signature_left', 'signature_middle', 'signature_right'];
-
-        foreach ($fileFields as $field) {
-            if ($school->$field) {
-                Storage::disk('public')->delete($school->$field);
-            }
-        }
+        $this->fileUploadHandler->deleteSchoolFiles($school);
 
         $school->delete();
 
@@ -277,10 +251,10 @@ class SchoolController extends Controller
      */
     public function pending()
     {
-        $schools = School::where('status', 'pending')
-            ->with(['admins:id,name,email,school_id', 'certificateTemplate:id,name'])
+        $schools = School::where('status', SchoolStatus::PENDING->value)
+            ->with(['admins:id,name,email,school_id', 'certificateTemplates:id,name'])
             ->latest()
-            ->paginate(20);
+            ->paginate(config('pagination.schools'));
 
         return view('schools.pending', compact('schools'));
     }
@@ -291,7 +265,7 @@ class SchoolController extends Controller
     public function approve(School $school)
     {
         $school->update([
-            'status' => 'approved',
+            'status' => SchoolStatus::APPROVED->value,
             'approved_at' => now(),
             'approved_by' => auth()->id(),
         ]);
@@ -305,7 +279,7 @@ class SchoolController extends Controller
     public function reject(School $school)
     {
         $school->update([
-            'status' => 'rejected',
+            'status' => SchoolStatus::REJECTED->value,
         ]);
 
         return back()->with('success', 'School rejected.');
@@ -317,59 +291,10 @@ class SchoolController extends Controller
     public function suspend(School $school)
     {
         $school->update([
-            'status' => 'suspended',
+            'status' => SchoolStatus::SUSPENDED->value,
         ]);
 
         return back()->with('success', 'School suspended.');
     }
 
-    /**
-     * Create initial invoice for a school.
-     */
-    protected function createInitialInvoice(School $school, array $data)
-    {
-        // Reload school to get package relationship
-        $school->load('package');
-
-        // Get amount and certificate count from package or use defaults
-        if ($school->package) {
-            $amount = $school->package->price ?? 0;
-            $certificatesCount = $school->package->monthly_certificate_limit ?? 10;
-            $planType = $school->package->name ?? 'Free';
-        } else {
-            // No package - use defaults
-            $amount = 0;
-            $certificatesCount = 10;
-            $planType = 'Free';
-        }
-
-        // Generate invoice number
-        $currentMonth = now()->format('Ym');
-        $invoiceNumber = 'INV-' . date('Ym') . '-' . str_pad($school->id, 4, '0', STR_PAD_LEFT) . '-' . strtoupper(Str::random(4));
-
-        // Set due date
-        $dueDate = now()->addDays(7);
-
-        // If amount is 0, mark as paid automatically
-        $status = $amount == 0 ? 'paid' : 'pending';
-        $paidDate = $amount == 0 ? now() : null;
-        $paymentMethod = $amount == 0 ? 'Free Plan' : null;
-
-        // Create invoice
-        Invoice::create([
-            'school_id' => $school->id,
-            'invoice_number' => $invoiceNumber,
-            'month' => now()->format('Y-m'),
-            'amount' => $amount,
-            'certificates_count' => $certificatesCount,
-            'plan_type' => $planType,
-            'status' => $status,
-            'due_date' => $dueDate,
-            'paid_date' => $paidDate,
-            'payment_method' => $paymentMethod,
-            'notes' => $amount == 0 ? 'Free plan - No payment required' : null,
-        ]);
-
-        $school->makePending();
-    }
 }

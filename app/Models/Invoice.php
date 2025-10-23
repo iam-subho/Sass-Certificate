@@ -20,7 +20,9 @@ class Invoice extends Model
         'due_date',
         'paid_date',
         'payment_method',
+        'transaction_id',
         'notes',
+        'package_meta',
     ];
 
     protected function casts(): array
@@ -29,6 +31,7 @@ class Invoice extends Model
             'due_date' => 'date',
             'paid_date' => 'date',
             'amount' => 'decimal:2',
+            'package_meta' => 'array',
         ];
     }
 

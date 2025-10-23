@@ -5,10 +5,22 @@ namespace App\Http\Controllers;
 use App\Http\Requests\Invoice\UpdateInvoiceRequest;
 use App\Models\Invoice;
 use App\Models\School;
+use App\Enums\InvoiceStatus;
+use App\Enums\SchoolStatus;
+use App\Services\InvoiceService;
+use App\Traits\AuthorizesSchoolResources;
 use Illuminate\Http\Request;
 
 class InvoiceController extends Controller
 {
+    use AuthorizesSchoolResources;
+
+    protected InvoiceService $invoiceService;
+
+    public function __construct(InvoiceService $invoiceService)
+    {
+        $this->invoiceService = $invoiceService;
+    }
     /**
      * Display a listing of invoices.
      */
@@ -16,16 +28,29 @@ class InvoiceController extends Controller
     {
         $user = auth()->user();
 
-        // Build the base query
-        if ($user->isSuperAdmin()) {
-            $query = Invoice::with(['school:id,name']);
-        } elseif ($user->isSchoolAdmin()) {
-            $query = Invoice::where('school_id', $user->school_id);
-        } else {
-            abort(403, 'Unauthorized action.');
-        }
+        // Build the base query with user scope
+        $query = Invoice::query()->with(['school:id,name']);
+        $query = $this->scopeByUserRole($query, 'school_id', $user);
 
         // Apply filters
+        $this->applyFilters($query, $request);
+
+        // Get invoices with pagination
+        $invoices = $query->latest()->paginate(config('pagination.invoices'))->withQueryString();
+
+        // Get schools for filter dropdown (Super Admin only)
+        $schools = $user->isSuperAdmin()
+            ? School::select('id', 'name')->orderBy('name')->get()
+            : collect();
+
+        return view('invoices.index', compact('invoices', 'schools'));
+    }
+
+    /**
+     * Apply filters to invoice query
+     */
+    protected function applyFilters($query, Request $request): void
+    {
         if ($request->filled('school_id')) {
             $query->where('school_id', $request->school_id);
         }
@@ -41,16 +66,6 @@ class InvoiceController extends Controller
         if ($request->filled('status')) {
             $query->where('status', $request->status);
         }
-
-        // Get invoices with pagination
-        $invoices = $query->latest()->paginate(20)->withQueryString();
-
-        // Get schools for filter dropdown (Super Admin only)
-        $schools = $user->isSuperAdmin()
-            ? School::select('id', 'name')->orderBy('name')->get()
-            : collect();
-
-        return view('invoices.index', compact('invoices', 'schools'));
     }
 
     /**
@@ -58,12 +73,7 @@ class InvoiceController extends Controller
      */
     public function show(Invoice $invoice)
     {
-        $user = auth()->user();
-
-        // School admin can only view their own school's invoices
-        if ($user->isSchoolAdmin() && $invoice->school_id != $user->school_id) {
-            abort(403, 'Unauthorized action.');
-        }
+        $this->authorizeSchoolResource($invoice);
 
         $invoice->load(['school']);
 
@@ -75,12 +85,7 @@ class InvoiceController extends Controller
      */
     public function edit(Invoice $invoice)
     {
-        $user = auth()->user();
-
-        // School admin can only edit their own school's invoices
-        if (!$user->isSuperAdmin()) {
-            abort(403, 'Unauthorized action.');
-        }
+        $this->authorizeSuperAdmin('Only super admins can edit invoices.');
 
         return view('invoices.edit', compact('invoice'));
     }
@@ -92,41 +97,27 @@ class InvoiceController extends Controller
     {
         $validated = $request->validated();
 
-        // If marking as paid, set paid_date and update school package
-        if (isset($validated['status']) && $validated['status'] === 'paid' && $invoice->status !== 'paid') {
-            $validated['paid_date'] = $validated['paid_date'] ?? now();
+        // If marking as paid, handle payment logic
+        if (isset($validated['status']) &&
+            $validated['status'] == InvoiceStatus::PAID->value &&
+            $invoice->status !== InvoiceStatus::PAID->value) {
 
-            // Update school's package and plan for next month
-            $this->updateSchoolPlanOnPayment($invoice);
+            // Mark invoice as paid
+            $this->invoiceService->markAsPaid($invoice, [
+                'payment_method' => $validated['payment_method'] ?? null,
+                'transaction_id' => $validated['transaction_id'] ?? null,
+                'notes' => $validated['notes'] ?? null,
+            ]);
+
+            // Update school's package and plan
+            $this->invoiceService->updateSchoolPlanOnPayment($invoice);
+        } else {
+            // Just update the invoice
+            $invoice->update($validated);
         }
-
-        $invoice->update($validated);
 
         return redirect()->route('invoices.show', $invoice)
             ->with('success', 'Invoice updated successfully.');
-    }
-
-    /**
-     * Update school's plan when invoice is paid.
-     */
-    protected function updateSchoolPlanOnPayment(Invoice $invoice)
-    {
-        $school = $invoice->school;
-
-        // Extend plan by 1 month from current expiry or from now
-        $startDate = $school->plan_expiry_date && $school->plan_expiry_date->isFuture()
-            ? $school->plan_expiry_date
-            : now();
-
-        $school->update([
-            'plan_start_date' => $startDate,
-            'plan_expiry_date' => $startDate->copy()->addMonth(),
-            'plan_type' => $invoice->plan_type,
-            'monthly_certificate_limit' => $invoice->certificates_count,
-            'certificates_issued_this_month' => 0, // Reset monthly counter
-            'is_active' => true, // Reactivate if deactivated
-            'status' => 'approved', // Ensure status is approved
-        ]);
     }
 
     /**
@@ -134,17 +125,13 @@ class InvoiceController extends Controller
      */
     public function overdue()
     {
-        $user = auth()->user();
-
-        if (!$user->isSuperAdmin()) {
-            abort(403, 'Unauthorized action.');
-        }
+        $this->authorizeSuperAdmin('Only super admins can view overdue invoices.');
 
         $invoices = Invoice::with(['school:id,name'])
-            ->where('status', 'pending')
+            ->where('status', InvoiceStatus::PENDING->value)
             ->where('due_date', '<', now())
             ->latest()
-            ->paginate(20);
+            ->paginate(config('pagination.invoices'));
 
         return view('invoices.overdue', compact('invoices'));
     }
@@ -154,12 +141,7 @@ class InvoiceController extends Controller
      */
     public function download(Invoice $invoice)
     {
-        $user = auth()->user();
-
-        // School admin can only download their own school's invoices
-        if ($user->isSchoolAdmin() && $invoice->school_id != $user->school_id) {
-            abort(403, 'Unauthorized action.');
-        }
+        $this->authorizeSchoolResource($invoice);
 
         $invoice->load(['school']);
 

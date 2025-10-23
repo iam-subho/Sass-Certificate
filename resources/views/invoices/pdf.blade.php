@@ -226,6 +226,9 @@
         <div class="invoice-notes">
             <h4>Payment Information</h4>
             <p><strong>Payment Method:</strong> {{ $invoice->payment_method }}</p>
+            @if($invoice->transaction_id)
+               <p><strong>Payment ID:</strong> {{ $invoice->transaction_id }}</p>
+            @endif
         </div>
         @endif
 

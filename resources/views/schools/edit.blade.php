@@ -65,10 +65,10 @@
                 </div>
 
                 <div>
-                    <label for="package_id" class="block text-sm font-medium text-gray-700">Subscription Package</label>
+                    <label for="package_id" class="block text-sm font-medium text-gray-700">Subscription Package *</label>
                     <select name="package_id" id="package_id"
                         class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
-                        <option value="">Select Package (Optional)</option>
+                        <option value="">Select Package</option>
                         @foreach($packages as $package)
                         <option value="{{ $package->id }}" {{ old('package_id', $school->package_id) == $package->id ? 'selected' : '' }}>
                             {{ $package->name }} - ₹{{ number_format($package->price, 2) }} ({{ number_format($package->monthly_certificate_limit) }} certificates/month)
