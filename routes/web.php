@@ -21,7 +21,7 @@ use App\Http\Controllers\InvoiceController;
 
 // Public routes
 Route::get('/', function () {
-    return redirect()->route('login');
+    return redirect()->route('verification.form');
 });
 
 // Public certificate verification (Rate Limited: 20 requests per minute)

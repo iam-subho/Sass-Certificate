@@ -15,9 +15,9 @@ class VerificationController extends Controller
     {
         $certificate = Certificate::where('certificate_id', $certificateId)
             ->with([
-                'student:id,first_name,last_name,dob',
+                'student:id,first_name,last_name,dob,father_name,mother_name,mobile,email',
                 'school:id,name,email,phone,logo',
-                'event:id,name,event_date'
+                'event:id,name,event_date,event_type,description'
             ])
             ->first();
 

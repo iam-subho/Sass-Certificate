@@ -76,6 +76,48 @@
                     </dl>
                 </div>
 
+                @if($certificate->event)
+                <div class="border-t border-gray-200 pt-6 mb-6">
+                    <h2 class="text-lg font-semibold text-gray-700 mb-4">Event Information</h2>
+                    <dl class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                        <div>
+                            <dt class="text-sm font-medium text-gray-500">Event Name</dt>
+                            <dd class="mt-1 text-sm text-gray-900">{{ $certificate->event->name }}</dd>
+                        </div>
+                        <div>
+                            <dt class="text-sm font-medium text-gray-500">Event Type</dt>
+                            <dd class="mt-1">
+                                <span class="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-purple-100 text-purple-800">
+                                    {{ ucfirst($certificate->event->event_type) }}
+                                </span>
+                            </dd>
+                        </div>
+                        @if($certificate->event->event_date)
+                        <div>
+                            <dt class="text-sm font-medium text-gray-500">Event Date</dt>
+                            <dd class="mt-1 text-sm text-gray-900">{{ $certificate->event->event_date->format('d M Y') }}</dd>
+                        </div>
+                        @endif
+                        @if($certificate->rank)
+                        <div>
+                            <dt class="text-sm font-medium text-gray-500">Rank/Achievement</dt>
+                            <dd class="mt-1">
+                                <span class="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-blue-100 text-blue-800">
+                                    {{ $certificate->rank }}
+                                </span>
+                            </dd>
+                        </div>
+                        @endif
+                        @if($certificate->event->description)
+                        <div class="sm:col-span-2">
+                            <dt class="text-sm font-medium text-gray-500">Description</dt>
+                            <dd class="mt-1 text-sm text-gray-900">{{ $certificate->event->description }}</dd>
+                        </div>
+                        @endif
+                    </dl>
+                </div>
+                @endif
+
                 <div class="border-t border-gray-200 pt-6">
                     <h2 class="text-lg font-semibold text-gray-700 mb-4">School Information</h2>
                     <dl class="grid grid-cols-1 gap-4 sm:grid-cols-2">
