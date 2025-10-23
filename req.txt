@@ -1,0 +1,170 @@
+SaaS Certificate Generation System – Requirements (Plain Text Format)
+1. User Roles
+1.1 Super Admin
+
+Can create, edit, disable, and delete schools.
+
+Can manage all students and certificates across all schools.
+
+Can assign certificate templates to schools.
+
+1.2 School Admin
+
+Can manage only their own school.
+
+Can add, edit, delete students under their school.
+
+Can upload logos and signatures for certificate customization.
+
+Can generate certificates for their students.
+
+Can import data using csv file and generate certificate
+
+2. Student Data Fields
+
+Each student will have the following fields:
+
+first_name (string, required)
+
+last_name (string, required)
+
+dob (date, required)
+
+father_name (string, required)
+
+mother_name (string, required)
+
+mobile (string, required)
+
+email (string, optional)
+
+school_id (integer, required)
+
+3. School Data Fields
+
+Each school will have the following fields:
+
+name (string, required)
+
+email (string, required)
+
+phone (string, required)
+
+logo (image, optional)
+
+certificate_template_id (integer, required)
+
+certificate_left_logo (image, optional)
+
+certificate_right_logo (image, optional)
+
+signature_left (image, optional)
+
+signature_middle (image, optional)
+
+signature_right (image, optional)
+
+signature_left_title (string, optional)
+
+signature_middle_title (string, optional)
+
+signature_right_title (string, optional)
+
+4. Certificate Generation
+
+Certificate is generated using both student data and school data.
+
+Template uses dynamic fields such as:
+{{first_name}}, {{dob}}, {{school_name}}, etc.
+
+School branding (logos, signatures) is embedded based on the school's data.
+
+QR Code is included on the certificate.
+
+5. QR Code & Verification
+
+Each certificate includes a unique QR code.
+
+When scanned, it opens a public verification URL:
+
+Example:
+https://yourdomain.com/verify/{certificate_id}
+
+Verification page displays:
+
+Student info
+
+School info
+
+Certificate issue date
+
+Validation status (valid/invalid)
+
+6. Certificate Templates
+
+Templates are built using HTML + TailwindCSS.
+
+Placeholders support dynamic data injection (e.g. {{student_name}}).
+
+Each school is linked to a template via certificate_template_id.
+
+7. Features Summary
+Authentication
+
+Super Admin login
+
+School Admin login
+
+School Management (Super Admin Only)
+
+Add, edit, disable schools
+
+Assign certificate templates
+
+Student Management (Super + School Admin)
+
+Add, edit, delete students
+
+View student list
+
+Certificate Management
+
+Generate certificate
+
+Attach QR code
+
+Save certificate as HTML or PDF
+
+View/verify via public link
+
+Template Management
+
+Super Admin creates and assigns templates
+
+Templates are HTML with TailwindCSS
+
+Dynamic placeholders used in templates
+
+8. Tech Stack
+
+Backend: Laravel v12 (PHP)
+
+Frontend: HTML, TailwindCSS v4, Alpine.js v3
+
+Database: MySQL
+
+QR Code: Laravel QR packages
+
+PDF Generation: Laravel DOMPDF or similar
+
+9. Non-Functional Requirements
+
+Role-based access control (RBAC)
+
+Multi-tenant architecture for schools
+
+Fast certificate generation (<2 seconds)
+
+Unique certificate ID for each student
+
+Public verification with secure access
