@@ -15,19 +15,26 @@ class CertificateTemplateSeeder extends Seeder
         CertificateTemplate::create([
             'name' => 'Modern Professional Certificate',
             'description' => 'A stunning modern certificate design with elegant gradients and professional typography',
-            'html_content' => $this->getTemplateHtml(),
+            'html_content' => $this->getModernTemplateHtml(),
+            'is_active' => true,
+        ]);
+
+        CertificateTemplate::create([
+            'name' => 'Academic Excellence Certificate',
+            'description' => 'Professional certificate design with traditional styling, featuring dual logo placement, QR code verification, and multiple signature fields. Suitable for student achievements and academic awards.',
+            'html_content' => $this->getAcademicTemplateHtml(),
             'is_active' => true,
         ]);
 
         if ($this->command) {
-            $this->command->info('Certificate template created.');
+            $this->command->info('2 certificate templates created.');
         }
     }
 
     /**
-     * Get the default template HTML
+     * Get the Modern Professional template HTML
      */
-    private function getTemplateHtml(): string
+    private function getModernTemplateHtml(): string
     {
         return <<<'HTML'
 <!DOCTYPE html>
@@ -132,6 +139,14 @@ class CertificateTemplateSeeder extends Seeder
                         <img src="{{certificate_right_logo}}" alt="" class="w-full h-full object-contain drop-shadow-md">
                     </div>
                 </div>
+
+                <!-- QR Code below right logo -->
+                <div class="absolute top-24 right-12 flex-shrink-0">
+                    <div class="bg-white rounded-lg p-2 shadow-xl border-2 border-amber-200">
+                        <img src="{{qr_code}}" alt="QR Code" class="w-20 h-20">
+                    </div>
+                    <p class="text-xs text-center text-gray-600 mt-1 font-medium">Scan to Verify</p>
+                </div>
             </div>
 
             <!-- Certificate Body - Centered -->
@@ -160,20 +175,14 @@ class CertificateTemplateSeeder extends Seeder
                 </p>
 
                 <!-- Student Name with QR Code -->
-                <div class="mb-5 relative flex items-center justify-center gap-6">
+                <div class="mb-5 relative flex items-center justify-center gap-16">
                     <div class="relative">
                         <div class="absolute inset-0 bg-gradient-to-r from-blue-200 to-purple-200 blur-xl opacity-30"></div>
                         <h3 class="relative text-5xl font-bold playfair text-gray-900 border-b-4 border-amber-500 pb-1.5 px-8">
                             {{full_name}}
                         </h3>
                     </div>
-                    <!-- QR Code beside name -->
-                    <div class="flex-shrink-0">
-                        <div class="bg-white rounded-lg p-2 shadow-xl border-2 border-amber-200">
-                            <img src="{{qr_code}}" alt="QR Code" class="w-20 h-20">
-                        </div>
-                        <p class="text-xs text-center text-gray-600 mt-1 font-medium">Scan to Verify</p>
-                    </div>
+
                 </div>
 
                 <!-- Student Details Grid -->
@@ -195,7 +204,6 @@ class CertificateTemplateSeeder extends Seeder
                 <!-- Event Information -->
                 <div class="text-center max-w-2xl mb-4">
                     <div class="bg-gradient-to-r from-purple-50 to-blue-50 rounded-lg px-6 py-3 shadow-md border border-purple-100 inline-block">
-                        <p class="text-xs text-gray-500 uppercase tracking-wide mb-1 font-semibold">Event / Competition</p>
                         <p class="text-base font-bold text-purple-800 montserrat">{{event_name}}</p>
                         <p class="text-xs text-gray-600 mt-1">
                             <span class="font-semibold">Rank / Achievement:</span>
@@ -227,8 +235,8 @@ class CertificateTemplateSeeder extends Seeder
             </div>
 
             <!-- Footer - Signatures -->
-            <div class="relative z-10 -mb-2">
-                <div class="flex justify-center gap-6">
+            <div class="relative z-10 -mb-2 mt-6">
+                <div class="flex justify-center gap-16">
                     <!-- Signature 1 -->
                     <div class="text-center signature-container" data-signature="left">
                         <div class="h-12 mb-1 flex items-end justify-center">
@@ -269,6 +277,234 @@ class CertificateTemplateSeeder extends Seeder
         <div class="absolute bottom-6 left-6 w-12 h-12 border-l-4 border-b-4 border-amber-500/50 rounded-bl-lg"></div>
         <div class="absolute bottom-6 right-6 w-12 h-12 border-r-4 border-b-4 border-amber-500/50 rounded-br-lg"></div>
 
+    </div>
+</body>
+</html>
+HTML;
+    }
+
+    /**
+     * Get the Academic Excellence template HTML
+     */
+    private function getAcademicTemplateHtml(): string
+    {
+        return <<<'HTML'
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Certificate of Achievement</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&family=Poppins:wght@300;400;600&display=swap');
+
+        body {
+            font-family: 'Poppins', sans-serif;
+        }
+
+        .certificate-container {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 2rem;
+        }
+
+        .certificate {
+            background: white;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .certificate::before {
+            content: '';
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            right: 20px;
+            bottom: 20px;
+            border: 3px solid #d4af37;
+            pointer-events: none;
+        }
+
+        .certificate::after {
+            content: '';
+            position: absolute;
+            top: 30px;
+            left: 30px;
+            right: 30px;
+            bottom: 30px;
+            border: 1px solid #d4af37;
+            pointer-events: none;
+        }
+
+        .ornament {
+            position: absolute;
+            width: 100px;
+            height: 100px;
+            opacity: 0.1;
+        }
+
+        .ornament-tl { top: 0; left: 0; }
+        .ornament-tr { top: 0; right: 0; transform: scaleX(-1); }
+        .ornament-bl { bottom: 0; left: 0; transform: scaleY(-1); }
+        .ornament-br { bottom: 0; right: 0; transform: scale(-1); }
+
+        .title {
+            font-family: 'Playfair Display', serif;
+            font-size: 3rem;
+            font-weight: 700;
+            color: #1e3a8a;
+            letter-spacing: 2px;
+        }
+
+        .subtitle {
+            font-family: 'Playfair Display', serif;
+            font-size: 1.25rem;
+            color: #64748b;
+            letter-spacing: 3px;
+        }
+
+        .student-name {
+            font-family: 'Playfair Display', serif;
+            font-size: 2.5rem;
+            font-weight: 700;
+            color: #1e3a8a;
+            border-bottom: 2px solid #d4af37;
+            display: inline-block;
+            padding: 0.5rem 2rem;
+        }
+
+        .seal {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #d4af37 0%, #f4d03f 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 4px 15px rgba(212, 175, 55, 0.4);
+        }
+
+        /* Hide images with empty or no src */
+        img[src=""], img:not([src]) {
+            display: none !important;
+        }
+
+        @media print {
+            .certificate-container {
+                background: white;
+                padding: 0;
+            }
+
+            .certificate {
+                box-shadow: none;
+                page-break-inside: avoid;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="certificate-container flex items-center justify-center">
+        <div class="certificate w-full max-w-5xl aspect-[1.414/1] p-16">
+            <!-- Decorative Ornaments -->
+            <svg class="ornament ornament-tl" viewBox="0 0 100 100">
+                <path d="M0,0 L100,0 L100,100 Q50,50 0,100 Z" fill="#d4af37" opacity="0.1"/>
+            </svg>
+            <svg class="ornament ornament-tr" viewBox="0 0 100 100">
+                <path d="M0,0 L100,0 L100,100 Q50,50 0,100 Z" fill="#d4af37" opacity="0.1"/>
+            </svg>
+            <svg class="ornament ornament-bl" viewBox="0 0 100 100">
+                <path d="M0,0 L100,0 L100,100 Q50,50 0,100 Z" fill="#d4af37" opacity="0.1"/>
+            </svg>
+            <svg class="ornament ornament-br" viewBox="0 0 100 100">
+                <path d="M0,0 L100,0 L100,100 Q50,50 0,100 Z" fill="#d4af37" opacity="0.1"/>
+            </svg>
+
+            <!-- Header Section -->
+            <div class="relative z-10 flex items-start justify-between mb-3">
+                <div class="w-20 h-20 flex-shrink-0">
+                    <img src="{{certificate_left_logo}}" alt="Left Logo" class="w-full h-full object-contain">
+                </div>
+
+                <div class="text-center flex-1 px-8">
+                    <div class="text-2xl font-bold text-gray-700 mb-1">{{school_name}}</div>
+                    <div class="text-sm text-gray-600">{{school_email}} | {{school_phone}}</div>
+                </div>
+
+                <div class="w-20 h-20 flex-shrink-0">
+                    <img src="{{certificate_right_logo}}" alt="Right Logo" class="w-full h-full object-contain">
+                </div>
+            </div>
+
+            <!-- Title Section -->
+            <div class="relative z-10 text-center mb-3">
+                <div class="title">CERTIFICATE</div>
+                <div class="subtitle mt-2">OF {{event_type}}</div>
+            </div>
+
+            <!-- Divider -->
+            <div class="flex items-center justify-center mb-3">
+                <div class="h-px w-20 bg-gradient-to-r from-transparent to-gray-300"></div>
+                <div class="mx-4 text-2xl text-yellow-600">✦</div>
+                <div class="h-px w-20 bg-gradient-to-l from-transparent to-gray-300"></div>
+            </div>
+
+            <!-- Content Section -->
+            <div class="relative z-10 text-center mb-8">
+                <p class="text-gray-700 mb-4 text-lg">This is proudly presented to</p>
+
+                <div class="student-name mb-6">{{full_name}}</div>
+
+                <p class="text-gray-700 text-base leading-relaxed max-w-2xl mx-auto mb-4">
+                    For outstanding achievement in <span class="font-semibold text-gray-900">{{event_name}}</span>
+                    <br>
+                    {{event_description}}
+                </p>
+
+                <div class="flex items-center justify-center gap-8 text-sm text-gray-600 mb-2">
+                    <div>
+                        <span class="font-semibold">DOB:</span> {{dob}}
+                    </div>
+                    <div>
+                        <span class="font-semibold">Date:</span> {{event_date}}
+                    </div>
+                    <div>
+                        <span class="font-semibold">Rank:</span> {{rank}}
+                    </div>
+                </div>
+            </div>
+
+            <!-- Footer Section -->
+            <div class="relative z-10 flex items-end justify-between mt-8 mb-8">
+                <!-- Left Signature -->
+                <div class="text-center flex-1">
+                    <div class="w-32 h-16 mx-auto mb-2 flex items-center justify-center">
+                        <img src="{{signature_left}}" alt="Signature" class="max-h-full max-w-full object-contain">
+                    </div>
+                    <div class="h-px w-32 bg-gray-800 mx-auto mb-1"></div>
+                    <div class="text-sm font-semibold text-gray-800">{{signature_left_title}}</div>
+                </div>
+
+                <!-- Center - QR Code & Certificate ID -->
+                <div class="text-center flex-1">
+                    <div class="w-20 h-20 mx-auto mb-2 bg-white border-2 border-amber-500 rounded-lg p-1">
+                        <img src="{{qr_code}}" alt="QR Code" class="w-full h-full object-contain">
+                    </div>
+                    <div class="text-xs text-gray-600 font-mono">{{certificate_id}}</div>
+                    <div class="text-xs text-gray-500">Issued: {{issued_date}}</div>
+                </div>
+
+                <!-- Right Signature -->
+                <div class="text-center flex-1">
+                    <div class="w-32 h-16 mx-auto mb-2 flex items-center justify-center">
+                        <img src="{{signature_right}}" alt="Signature" class="max-h-full max-w-full object-contain">
+                    </div>
+                    <div class="h-px w-32 bg-gray-800 mx-auto mb-1"></div>
+                    <div class="text-sm font-semibold text-gray-800">{{signature_right_title}}</div>
+                </div>
+            </div>
+        </div>
     </div>
 </body>
 </html>
