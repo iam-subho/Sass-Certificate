@@ -53,7 +53,7 @@
                 <select name="certificate_template_id" id="certificate_template_id" required class="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
                     <option value="">-- Select Template --</option>
                     @foreach($availableTemplates as $template)
-                        <option value="{{ $template->id }}">
+                        <option value="{{ $template->id }}" @if($event->certificate_template_id == $template->id) selected @endif>
                             {{ $template->name }}
                             @if($template->description)
                                 - {{ $template->description }}

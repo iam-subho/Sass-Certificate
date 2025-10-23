@@ -66,7 +66,7 @@
                     <label for="section" class="block text-sm font-medium text-gray-700 mb-2">
                         Select Section (Optional)
                     </label>
-                    <select name="section" id="section" class="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                    <select name="section" id="section" class="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500" disabled>
                         <option value="">-- All Sections --</option>
                     </select>
                 </div>
@@ -116,9 +116,15 @@ document.addEventListener('DOMContentLoaded', function() {
     const sectionSelect = document.getElementById('section');
     const selectAllCheckbox = document.getElementById('select-all');
     const nextBtn = document.getElementById('next-btn');
+    let currentClassId = null;
 
-    classSelect.addEventListener('change', loadStudents);
-    sectionSelect.addEventListener('change', loadStudents);
+    classSelect.addEventListener('change', function() {
+        loadStudents(true); // true means class changed
+    });
+
+    sectionSelect.addEventListener('change', function() {
+        loadStudents(false); // false means only section changed
+    });
 
     selectAllCheckbox.addEventListener('change', function() {
         const checkboxes = document.querySelectorAll('#students-container input[type="checkbox"]');
@@ -126,18 +132,24 @@ document.addEventListener('DOMContentLoaded', function() {
         updateSelectedCount();
     });
 
-    function loadStudents() {
+    function loadStudents(isClassChange) {
         const classId = classSelect.value;
         const section = sectionSelect.value;
 
         if (!classId) {
             document.getElementById('students-list').style.display = 'none';
             nextBtn.disabled = true;
+            sectionSelect.innerHTML = '<option value="">-- All Sections --</option>';
+            sectionSelect.disabled = true;
+            currentClassId = null;
             return;
         }
 
         document.getElementById('loading').style.display = 'block';
         document.getElementById('students-list').style.display = 'none';
+
+        // Store the currently selected section value before repopulating
+        const currentSection = sectionSelect.value;
 
         fetch(`{{ route('issue.load-students') }}?class_id=${classId}&section=${section}`)
             .then(res => res.json())
@@ -155,17 +167,30 @@ document.addEventListener('DOMContentLoaded', function() {
                     </label>
                 `).join('');
 
-                // Load sections for selected class
-                const selectedClass = @json($classes);
-                const classData = selectedClass.find(c => c.id == classId);
-                if (classData && classData.sections) {
-                    const sections = classData.sections.split(',');
-                    sectionSelect.innerHTML = '<option value="">-- All Sections --</option>' +
-                        sections.map(s => `<option value="${s.trim()}">${s.trim()}</option>`).join('');
+                // Only repopulate sections dropdown when class changes
+                if (isClassChange || currentClassId !== classId) {
+                    const selectedClass = @json($classes);
+                    const classData = selectedClass.find(c => c.id == classId);
+                    if (classData && classData.sections) {
+                        const sections = classData.sections.split(',');
+                        sectionSelect.innerHTML = '<option value="">-- All Sections --</option>' +
+                            sections.map(s => `<option value="${s.trim()}">${s.trim()}</option>`).join('');
+                        sectionSelect.disabled = false;
+
+                        // Restore the previously selected section if it exists
+                        if (!isClassChange && currentSection) {
+                            sectionSelect.value = currentSection;
+                        }
+                    } else {
+                        sectionSelect.innerHTML = '<option value="">-- All Sections --</option>';
+                        sectionSelect.disabled = true;
+                    }
+                    currentClassId = classId;
                 }
 
                 document.getElementById('loading').style.display = 'none';
                 document.getElementById('students-list').style.display = 'block';
+                selectAllCheckbox.checked = false;
                 updateSelectedCount();
             })
             .catch(error => {
