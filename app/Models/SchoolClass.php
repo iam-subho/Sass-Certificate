@@ -18,6 +18,7 @@ class SchoolClass extends Model
         'order',
         'is_active',
     ];
+    protected $withCount = ['students'];
 
     protected function casts(): array
     {

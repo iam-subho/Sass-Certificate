@@ -8,20 +8,24 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Mail\Mailable;
 use Illuminate\Mail\Mailables\Content;
 use Illuminate\Mail\Mailables\Envelope;
+use Illuminate\Mail\Mailables\Attachment;
 use Illuminate\Queue\SerializesModels;
+use Illuminate\Support\Facades\Storage;
 
 class CertificateIssuedMail extends Mailable
 {
     use Queueable, SerializesModels;
 
     public $certificate;
+    protected $pdfPath;
 
     /**
      * Create a new message instance.
      */
-    public function __construct(Certificate $certificate)
+    public function __construct(Certificate $certificate, string $pdfPath = null)
     {
         $this->certificate = $certificate;
+        $this->pdfPath = $pdfPath;
     }
 
     /**
@@ -51,6 +55,14 @@ class CertificateIssuedMail extends Mailable
      */
     public function attachments(): array
     {
+        if ($this->pdfPath && Storage::exists($this->pdfPath)) {
+            return [
+                Attachment::fromStorage($this->pdfPath)
+                    ->as('certificate-' . $this->certificate->certificate_id . '.pdf')
+                    ->withMime('application/pdf'),
+            ];
+        }
+
         return [];
     }
 }

@@ -42,12 +42,17 @@
                     @if($class->sections)
                         <div class="mb-4">
                             <p class="text-sm font-medium text-gray-700 mb-2">Sections:</p>
-                            <div class="flex flex-wrap gap-2">
-                                @foreach(explode(',', $class->sections) as $section)
-                                    <span class="px-2 py-1 text-xs font-medium rounded bg-gray-100 text-gray-700">
+                            <div class="flex items-center justify-between mb-4">
+                               <div class="flex flex-wrap gap-2">
+                                  @foreach(explode(',', $class->sections) as $section)
+                                     <span class="px-2 py-1 text-xs font-medium rounded bg-gray-100 text-gray-700">
                                         {{ trim($section) }}
-                                    </span>
-                                @endforeach
+                                     </span>
+                                 @endforeach
+                               </div>
+                               <span class="px-2 py-1 text-xs font-semibold rounded-full bg-blue-100 text-blue-800">
+                                 ID:-   {{ $class->id }}
+                               </span>
                             </div>
                         </div>
                     @endif

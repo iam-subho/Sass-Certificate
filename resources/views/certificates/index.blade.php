@@ -107,9 +107,6 @@
                     @endif
                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Event</th>
                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Rank</th>
-                    @if(!auth()->user()->isIssuer())
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Issued By</th>
-                    @endif
                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Issued Date</th>
                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
@@ -146,11 +143,6 @@
                             {{ $certificate->rank ?? 'Participation' }}
                         </span>
                     </td>
-                    @if(!auth()->user()->isIssuer())
-                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                            {{ $certificate->issuer->name ?? 'N/A' }}
-                        </td>
-                    @endif
                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                         {{ $certificate->issued_at->format('M d, Y') }}
                     </td>
