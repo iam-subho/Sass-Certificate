@@ -13,7 +13,7 @@
 <body class="bg-gray-100">
     @auth
     <nav class="bg-white shadow-lg" x-data="{ open: false }">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="max-w-10xl mx-auto px-4 sm:px-6 lg:px-8">
             <div class="flex justify-between h-16">
                 <div class="flex">
                     <div class="flex-shrink-0 flex items-center">
@@ -191,7 +191,7 @@
     @endauth
 
     @if(session('success'))
-    <div x-data="{ show: true }" x-show="show" x-init="setTimeout(() => show = false, 5000)" x-cloak class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-4">
+    <div x-data="{ show: true }" x-show="show" x-init="setTimeout(() => show = false, 5000)" x-cloak class="max-w-10xl mx-auto px-4 sm:px-6 lg:px-8 mt-4">
         <div class="bg-green-50 border-l-4 border-green-400 p-4">
             <div class="flex">
                 <div class="flex-shrink-0">
@@ -208,7 +208,7 @@
     @endif
 
     @if(session('error'))
-    <div x-data="{ show: true }" x-show="show" x-init="setTimeout(() => show = false, 5000)" x-cloak class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-4">
+    <div x-data="{ show: true }" x-show="show" x-init="setTimeout(() => show = false, 5000)" x-cloak class="max-w-10xl mx-auto px-4 sm:px-6 lg:px-8 mt-4">
         <div class="bg-red-50 border-l-4 border-red-400 p-4">
             <div class="flex">
                 <div class="flex-shrink-0">

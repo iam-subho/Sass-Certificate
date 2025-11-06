@@ -3,7 +3,7 @@
 @section('title', 'Invoices')
 
 @section('content')
-<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+<div class="max-w-10xl mx-auto px-4 sm:px-6 lg:px-8">
     <div class="flex justify-between items-center mb-6">
         <h1 class="text-3xl font-bold text-gray-900">Invoices</h1>
         @if(auth()->user()->isSuperAdmin())

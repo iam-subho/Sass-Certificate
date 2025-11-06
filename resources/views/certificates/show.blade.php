@@ -3,7 +3,7 @@
 @section('title', 'View Certificate')
 
 @section('content')
-<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+<div class="max-w-10xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
     <div class="mb-6">
         <div class="flex justify-between items-center mb-4">
             <h1 class="text-3xl font-bold text-gray-900">Certificate Details</h1>
