@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Http\Requests\Student\ImportStudentsRequest;
 use App\Http\Requests\Student\StoreStudentRequest;
 use App\Http\Requests\Student\UpdateStudentRequest;
+use App\Jobs\SendCredentialMailJob;
 use App\Models\Student;
 use App\Models\School;
 use Illuminate\Http\Request;
@@ -164,7 +165,7 @@ class StudentController extends Controller
         $errors = [];
 
         foreach ($data as $index => $row) {
-            if (count($row) < 8) {
+            if (count($row) < 7 and $user->isSchoolAdmin()) {
                 $errors[] = "Row " . ($index + 2) . ": Incomplete data";
                 continue;
             }
@@ -195,7 +196,7 @@ class StudentController extends Controller
 
                 // Auto-generate credentials for imported students
                 $studentData['username'] = Student::generateUsername($firstName, $lastName);
-                $studentData['password'] = Hash::make(\Carbon\Carbon::parse($dob)->format('dmY')); // DOB as default password
+                $studentData['password'] = Hash::make(\Carbon\Carbon::parse($dob)->format('dmY')).rand(111111,999999); //default password
                 $studentData['is_active'] = true; // Auto-activate imported students
 
                 Student::create($studentData);
@@ -241,6 +242,8 @@ class StudentController extends Controller
             'is_active' => true,
         ]);
 
+        dispatch(new SendCredentialMailJob($student, $tempPassword));
+
         // Return the temporary password so admin can share it
         return back()->with('success', "Credentials generated successfully! Username: {$student->username}, Temporary Password: {$tempPassword}");
     }
@@ -274,14 +277,16 @@ class StudentController extends Controller
             ]);
 
             // Send email with login credentials
-            Mail::send('emails.student-credentials', [
+            /*Mail::send('emails.student-credentials', [
                 'password' => $tempPassword,
                 'student' => $student,
                 'loginUrl' => route('student.login'),
             ], function ($message) use ($student) {
                 $message->to($student->email)
                     ->subject('Your Student Portal Login Credentials');
-            });
+            });*/
+
+            dispatch(new SendCredentialMailJob($student, $tempPassword));
 
             return back()->with('success', 'Login credentials sent to student email successfully.');
         } catch (\Exception $e) {
