@@ -26,6 +26,7 @@ class Certificate extends Model
         'sent_via_whatsapp',
         'approved_at',
         'approved_by',
+        'visible_on_profile'
     ];
 
     protected function casts(): array

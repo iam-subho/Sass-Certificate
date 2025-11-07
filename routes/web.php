@@ -18,6 +18,11 @@ use App\Http\Controllers\PasswordChangeController;
 use App\Http\Controllers\SchoolProfileController;
 use App\Http\Controllers\PackageController;
 use App\Http\Controllers\InvoiceController;
+use App\Http\Controllers\PublicProfileController;
+use App\Http\Controllers\Student\StudentAuthController;
+use App\Http\Controllers\Student\StudentDashboardController;
+use App\Http\Controllers\Student\StudentProfileController;
+use App\Http\Controllers\Student\StudentPasswordResetController;
 
 // Public routes
 Route::get('/', function () {
@@ -37,7 +42,7 @@ Route::middleware('throttle:10,1')->group(function () {
 });
 
 // Authentication routes (Rate Limited: 5 login attempts per minute to prevent brute force)
-Route::middleware(['guest', 'throttle:5,1'])->group(function () {
+Route::middleware(['guest', 'throttle:20,1'])->prefix('staff')->group(function () {
     Route::get('/login', [AuthController::class, 'showLogin'])->name('login');
     Route::post('/login', [AuthController::class, 'login']);
 });
@@ -133,6 +138,12 @@ Route::middleware('auth')->group(function () {
         Route::get('/students/import/form', [StudentController::class, 'importForm'])->name('students.import.form');
         Route::post('/students/import', [StudentController::class, 'import'])->name('students.import');
 
+        // Student credential management
+        Route::post('/students/{student}/generate-credentials', [StudentController::class, 'generateCredentials'])->name('students.generate-credentials');
+        Route::post('/students/{student}/send-credentials', [StudentController::class, 'sendCredentials'])->name('students.send-credentials');
+        Route::post('/students/{student}/toggle-active', [StudentController::class, 'toggleActive'])->name('students.toggle-active');
+        Route::post('/students/{student}/reset-password', [StudentController::class, 'resetPassword'])->name('students.reset-password');
+
         // Certificate management
         Route::resource('certificates', CertificateController::class)->only(['index', 'create', 'show']);
         Route::post('/certificates/generate', [CertificateController::class, 'generate'])->name('certificates.generate');
@@ -146,5 +157,52 @@ Route::middleware('auth')->group(function () {
         // Invoice management (accessible to both Super Admin and School Admin)
         Route::resource('invoices', InvoiceController::class)->only(['index', 'show', 'edit', 'update']);
         Route::get('/invoices/{invoice}/download', [InvoiceController::class, 'download'])->name('invoices.download');
+    });
+});
+
+// ============================================
+// STUDENT PORTAL ROUTES
+// ============================================
+
+// Public Student Profile (LinkedIn-style)
+Route::get('/profile/{username}', [PublicProfileController::class, 'show'])->name('profile.public');
+
+// Student Authentication Routes (Guest Only)
+Route::middleware(['student.guest', 'throttle:20,1'])->name('student.')->group(function () {
+    Route::get('/login', [StudentAuthController::class, 'showLogin'])->name('login');
+    Route::post('/login', [StudentAuthController::class, 'login']);
+
+    // Registration disabled - Students are imported by schools
+    // Route::get('/register', [StudentAuthController::class, 'showRegister'])->name('register');
+    // Route::post('/register', [StudentAuthController::class, 'register']);
+
+    // Password Reset Routes
+    Route::get('/forgot-password', [StudentPasswordResetController::class, 'showResetRequestForm'])->name('password.request');
+    Route::post('/forgot-password', [StudentPasswordResetController::class, 'sendResetLink'])->name('password.email');
+    Route::get('/reset-password/{token}', [StudentPasswordResetController::class, 'showResetForm'])->name('password.reset');
+    Route::post('/reset-password', [StudentPasswordResetController::class, 'reset'])->name('password.update');
+});
+
+// Student Authenticated Routes
+Route::middleware(['student.auth'])->prefix('student')->name('student.')->group(function () {
+    // Logout
+    Route::post('/logout', [StudentAuthController::class, 'logout'])->name('logout');
+
+    // Dashboard
+    Route::get('/dashboard', [StudentDashboardController::class, 'index'])->name('dashboard');
+
+    // Certificate Visibility Toggle
+    Route::post('/certificates/{certificate}/toggle-visibility', [StudentDashboardController::class, 'toggleCertificateVisibility'])
+        ->name('certificates.toggle-visibility');
+
+    // Profile Management
+    Route::prefix('profile')->name('profile.')->group(function () {
+        Route::get('/edit', [StudentProfileController::class, 'edit'])->name('edit');
+        Route::post('/update', [StudentProfileController::class, 'update'])->name('update');
+        Route::post('/delete-picture', [StudentProfileController::class, 'deleteProfilePicture'])->name('delete-picture');
+        Route::post('/update-password', [StudentProfileController::class, 'updatePassword'])->name('update-password');
+
+        // AJAX endpoint for checking username availability
+        Route::post('/check-username', [StudentProfileController::class, 'checkUsername'])->name('check-username');
     });
 });

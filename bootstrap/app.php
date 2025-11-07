@@ -24,6 +24,8 @@ return Application::configure(basePath: dirname(__DIR__))
             'super_admin' => \App\Http\Middleware\SuperAdminMiddleware::class,
             'school_admin' => \App\Http\Middleware\SchoolAdminMiddleware::class,
             'issuer' => \App\Http\Middleware\IssuerMiddleware::class,
+            'student.auth' => \App\Http\Middleware\StudentAuth::class,
+            'student.guest' => \App\Http\Middleware\RedirectIfStudentAuthenticated::class,
         ]);
 
         // Add school active check to web middleware group (runs on all web routes)

@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(php artisan:*)",
+      "Bash(C:Userssubho.configherdbinphp.bat artisan make:migration add_authentication_and_profile_fields_to_students_table --table=students)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}

@@ -9,6 +9,9 @@ use App\Models\Student;
 use App\Models\School;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Str;
+use Illuminate\Support\Facades\Mail;
 
 class StudentController extends Controller
 {
@@ -167,10 +170,14 @@ class StudentController extends Controller
             }
 
             try {
+                $firstName = $row[0];
+                $lastName = $row[1];
+                $dob = $row[2];
+
                 $studentData = [
-                    'first_name' => $row[0],
-                    'last_name' => $row[1],
-                    'dob' => $row[2],
+                    'first_name' => $firstName,
+                    'last_name' => $lastName,
+                    'dob' => $dob,
                     'father_name' => $row[3],
                     'mother_name' => $row[4],
                     'mobile' => $row[5],
@@ -186,6 +193,11 @@ class StudentController extends Controller
                     continue;
                 }
 
+                // Auto-generate credentials for imported students
+                $studentData['username'] = Student::generateUsername($firstName, $lastName);
+                $studentData['password'] = Hash::make(\Carbon\Carbon::parse($dob)->format('dmY')); // DOB as default password
+                $studentData['is_active'] = true; // Auto-activate imported students
+
                 Student::create($studentData);
                 $imported++;
             } catch (\Exception $e) {
@@ -200,5 +212,122 @@ class StudentController extends Controller
 
         return redirect()->route('students.index')
             ->with('success', $message);
+    }
+
+    /**
+     * Generate login credentials for a student.
+     */
+    public function generateCredentials(Student $student)
+    {
+        $user = auth()->user();
+
+        // School admin can only generate credentials for their own school's students
+        if ($user->isSchoolAdmin() && $student->school_id != $user->school_id) {
+            abort(403, 'Unauthorized action.');
+        }
+
+        // Generate username if not exists
+        if (!$student->username) {
+            $student->username = Student::generateUsername($student->first_name, $student->last_name);
+        }
+
+        // Generate temporary password (using DOB format: DDMMYYYY)
+        $tempPassword = $student->dob->format('dmY').rand(111111,999999);
+
+        // Update student with credentials and activate account
+        $student->update([
+            'username' => $student->username,
+            'password' => Hash::make($tempPassword),
+            'is_active' => true,
+        ]);
+
+        // Return the temporary password so admin can share it
+        return back()->with('success', "Credentials generated successfully! Username: {$student->username}, Temporary Password: {$tempPassword}");
+    }
+
+    /**
+     * Send login credentials to student via email.
+     */
+    public function sendCredentials(Student $student)
+    {
+        $user = auth()->user();
+
+        // School admin can only send credentials for their own school's students
+        if ($user->isSchoolAdmin() && $student->school_id != $user->school_id) {
+            abort(403, 'Unauthorized action.');
+        }
+
+        // Check if student has credentials
+        if (!$student->username || !$student->password) {
+            return back()->with('error', 'Please generate credentials first.');
+        }
+
+        // Check if student has email
+        if (!$student->email) {
+            return back()->with('error', 'Student does not have an email address.');
+        }
+
+        try {
+            $tempPassword = $student->dob->format('dmY').rand(111111,999999);
+            $student->update([
+                'password' => Hash::make($tempPassword),
+            ]);
+
+            // Send email with login credentials
+            Mail::send('emails.student-credentials', [
+                'password' => $tempPassword,
+                'student' => $student,
+                'loginUrl' => route('student.login'),
+            ], function ($message) use ($student) {
+                $message->to($student->email)
+                    ->subject('Your Student Portal Login Credentials');
+            });
+
+            return back()->with('success', 'Login credentials sent to student email successfully.');
+        } catch (\Exception $e) {
+            return back()->with('error', 'Failed to send email: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Toggle student account active status.
+     */
+    public function toggleActive(Student $student)
+    {
+        $user = auth()->user();
+
+        // School admin can only toggle status for their own school's students
+        if ($user->isSchoolAdmin() && $student->school_id != $user->school_id) {
+            abort(403, 'Unauthorized action.');
+        }
+
+        $student->update([
+            'is_active' => !$student->is_active,
+        ]);
+
+        $status = $student->is_active ? 'activated' : 'deactivated';
+        return back()->with('success', "Student account {$status} successfully.");
+    }
+
+    /**
+     * Reset student password to default (DOB).
+     */
+    public function resetPassword(Student $student)
+    {
+        $user = auth()->user();
+
+        // School admin can only reset password for their own school's students
+        if ($user->isSchoolAdmin() && $student->school_id != $user->school_id) {
+            abort(403, 'Unauthorized action.');
+        }
+
+        // Reset password to DOB format
+        $tempPassword = $student->dob->format('dmY').rand(111111,999999);
+
+        $student->update([
+            'password' => Hash::make($tempPassword),
+        ]);
+
+        return back()->with('success', "Password reset successfully! New password: {$tempPassword}");
     }
 }

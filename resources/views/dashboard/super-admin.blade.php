@@ -3,7 +3,7 @@
 @section('title', 'Super Admin Dashboard')
 
 @section('content')
-<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+<div class="max-w-10xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
     <div class="mb-6">
         <h1 class="text-3xl font-bold text-gray-900">Welcome, {{ auth()->user()->name }}!</h1>
         <p class="mt-1 text-sm text-gray-600">Super Administrator Dashboard</p>
