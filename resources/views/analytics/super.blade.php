@@ -2,6 +2,25 @@
 
 @section('title', 'Super Admin Analytics')
 
+@push('styles')
+<style>
+    /* FullCalendar minimal styles */
+    .fc { position: relative; }
+    .fc-header-toolbar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; }
+    .fc-toolbar-chunk { display: flex; gap: 0.5rem; }
+    .fc-daygrid { border: 1px solid #e5e7eb; }
+    .fc-col-header { background: #f9fafb; border-bottom: 1px solid #e5e7eb; }
+    .fc-scrollgrid { border-collapse: collapse; width: 100%; }
+    .fc-scrollgrid td, .fc-scrollgrid th { border: 1px solid #e5e7eb; }
+    .fc-daygrid-day { min-height: 100px; }
+    .fc-daygrid-day-frame { padding: 4px; min-height: 100px; }
+    .fc-daygrid-day-number { padding: 4px; }
+    .fc-daygrid-day-top { display: flex; justify-content: flex-end; }
+    .fc-event { margin: 2px; padding: 2px 4px; border-radius: 3px; font-size: 0.875rem; cursor: pointer; }
+    .fc-day-today { background-color: #eef2ff !important; }
+</style>
+@endpush
+
 @section('content')
 <div class="max-w-10xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
     <div class="mb-6">
@@ -94,6 +113,22 @@
                     </dl>
                 </div>
             </div>
+        </div>
+    </div>
+
+    <!-- Calendar Section -->
+    <div class="mb-8">
+        <div class="bg-white shadow rounded-lg p-6">
+            <div class="mb-4 flex justify-between items-center">
+                <h3 class="text-lg font-semibold text-gray-900">Inter-School Events Calendar</h3>
+                <div class="flex gap-4 text-sm">
+                    <div class="flex items-center gap-2">
+                        <div class="w-4 h-4 rounded" style="background-color: #8B5CF6;"></div>
+                        <span class="text-gray-600">Inter-School Events</span>
+                    </div>
+                </div>
+            </div>
+            <div id="fullcalendar" data-events-url="{{ route('api.calendar.events.super') }}"></div>
         </div>
     </div>
 

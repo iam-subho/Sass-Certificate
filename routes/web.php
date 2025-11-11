@@ -84,6 +84,9 @@ Route::middleware('auth')->group(function () {
         // Super Admin Analytics
         Route::get('/analytics/super-admin', [AnalyticsController::class, 'superAdmin'])->name('analytics.super');
 
+        // Calendar API for Super Admin
+        Route::get('/api/calendar/events/super-admin', [AnalyticsController::class, 'getCalendarEventsSuperAdmin'])->name('api.calendar.events.super');
+
         // Invoice management (Super Admin can view all invoices)
         Route::get('/invoices/overdue', [InvoiceController::class, 'overdue'])->name('invoices.overdue');
 
@@ -151,6 +154,9 @@ Route::middleware('auth')->group(function () {
 
     // Analytics (accessible to all authenticated users)
     Route::get('/analytics', [AnalyticsController::class, 'index'])->name('analytics.index');
+
+    // Calendar API for School Admin/Issuer
+    Route::get('/api/calendar/events/school', [AnalyticsController::class, 'getCalendarEventsSchool'])->name('api.calendar.events.school');
 
     // School Admin and Super Admin routes
     Route::group([], function () {

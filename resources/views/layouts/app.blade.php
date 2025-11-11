@@ -9,6 +9,7 @@
     <style>
         [x-cloak] { display: none !important; }
     </style>
+    @stack('styles')
 </head>
 <body class="bg-gray-100">
     @auth

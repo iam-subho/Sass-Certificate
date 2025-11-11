@@ -9,7 +9,9 @@
       "Bash(\"C:\\Users\\subho\\.config\\herd\\bin\\php.bat\" artisan make:model InterSchoolEvent)",
       "Bash(\"C:\\Users\\subho\\.config\\herd\\bin\\php.bat\" artisan make:controller InterSchoolEventController --resource)",
       "Bash(\"C:\\Users\\subho\\.config\\herd\\bin\\php.bat\" artisan make:controller SchoolInterSchoolEventController)",
-      "Bash(\"C:\\Users\\subho\\.config\\herd\\bin\\php.bat\" artisan make:controller Student/StudentInterSchoolEventController)"
+      "Bash(\"C:\\Users\\subho\\.config\\herd\\bin\\php.bat\" artisan make:controller Student/StudentInterSchoolEventController)",
+      "Bash(npm install:*)",
+      "Bash(npm run build:*)"
     ],
     "deny": [],
     "ask": []
