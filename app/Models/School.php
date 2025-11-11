@@ -111,6 +111,40 @@ class School extends Model
     }
 
     /**
+     * Get the inter-school events this school is invited to or participating in.
+     */
+    public function interSchoolEvents()
+    {
+        return $this->belongsToMany(InterSchoolEvent::class, 'inter_school_event_school')
+                    ->withPivot([
+                        'status',
+                        'can_students_join',
+                        'allowed_classes',
+                        'manual_approval_required',
+                        'responded_by',
+                        'joined_at',
+                        'rejected_at'
+                    ])
+                    ->withTimestamps();
+    }
+
+    /**
+     * Get inter-school events this school has joined.
+     */
+    public function joinedInterSchoolEvents()
+    {
+        return $this->interSchoolEvents()->wherePivot('status', 'joined');
+    }
+
+    /**
+     * Get inter-school events pending response.
+     */
+    public function pendingInterSchoolEvents()
+    {
+        return $this->interSchoolEvents()->wherePivot('status', 'pending');
+    }
+
+    /**
      * Get the classes for the school.
      */
     public function classes()

@@ -2,7 +2,14 @@
   "permissions": {
     "allow": [
       "Bash(php artisan:*)",
-      "Bash(C:Userssubho.configherdbinphp.bat artisan make:migration add_authentication_and_profile_fields_to_students_table --table=students)"
+      "Bash(C:Userssubho.configherdbinphp.bat artisan make:migration add_authentication_and_profile_fields_to_students_table --table=students)",
+      "Bash(\"C:\\Users\\subho\\.config\\herd\\bin\\php.bat\" artisan make:migration create_inter_school_event_school_table)",
+      "Bash(\"C:\\Users\\subho\\.config\\herd\\bin\\php.bat\" artisan make:migration:*)",
+      "Bash(\"C:\\Users\\subho\\.config\\herd\\bin\\php.bat\" artisan make:migration add_polymorphic_columns_to_certificates_table)",
+      "Bash(\"C:\\Users\\subho\\.config\\herd\\bin\\php.bat\" artisan make:model InterSchoolEvent)",
+      "Bash(\"C:\\Users\\subho\\.config\\herd\\bin\\php.bat\" artisan make:controller InterSchoolEventController --resource)",
+      "Bash(\"C:\\Users\\subho\\.config\\herd\\bin\\php.bat\" artisan make:controller SchoolInterSchoolEventController)",
+      "Bash(\"C:\\Users\\subho\\.config\\herd\\bin\\php.bat\" artisan make:controller Student/StudentInterSchoolEventController)"
     ],
     "deny": [],
     "ask": []

@@ -23,6 +23,9 @@ use App\Http\Controllers\Student\StudentAuthController;
 use App\Http\Controllers\Student\StudentDashboardController;
 use App\Http\Controllers\Student\StudentProfileController;
 use App\Http\Controllers\Student\StudentPasswordResetController;
+use App\Http\Controllers\InterSchoolEventController;
+use App\Http\Controllers\SchoolInterSchoolEventController;
+use App\Http\Controllers\Student\StudentInterSchoolEventController;
 
 // Public routes
 Route::get('/', function () {
@@ -83,6 +86,12 @@ Route::middleware('auth')->group(function () {
 
         // Invoice management (Super Admin can view all invoices)
         Route::get('/invoices/overdue', [InvoiceController::class, 'overdue'])->name('invoices.overdue');
+
+        // Inter-School Events Management
+        Route::resource('inter-school-events', InterSchoolEventController::class);
+        Route::get('/inter-school-events/{interSchoolEvent}/schools', [InterSchoolEventController::class, 'schools'])->name('inter-school-events.schools');
+        Route::get('/inter-school-events/{interSchoolEvent}/students', [InterSchoolEventController::class, 'students'])->name('inter-school-events.students');
+        Route::post('/inter-school-events/{interSchoolEvent}/publish', [InterSchoolEventController::class, 'publish'])->name('inter-school-events.publish');
     });
 
     // API endpoint for getting class sections (accessible to all authenticated users)
@@ -113,6 +122,18 @@ Route::middleware('auth')->group(function () {
         Route::get('/school/profile', [SchoolProfileController::class, 'edit'])->name('school.profile');
         Route::post('/school/profile', [SchoolProfileController::class, 'update'])->name('school.profile.update');
         Route::post('/school/profile/delete-image', [SchoolProfileController::class, 'deleteImage'])->name('school.profile.delete-image');
+
+        // Inter-School Events (School Admin)
+        Route::prefix('school/inter-school-events')->name('school.inter-school-events.')->group(function () {
+            Route::get('/', [SchoolInterSchoolEventController::class, 'index'])->name('index');
+            Route::get('/{interSchoolEvent}', [SchoolInterSchoolEventController::class, 'show'])->name('show');
+            Route::post('/{interSchoolEvent}/join', [SchoolInterSchoolEventController::class, 'join'])->name('join');
+            Route::post('/{interSchoolEvent}/reject', [SchoolInterSchoolEventController::class, 'reject'])->name('reject');
+            Route::post('/{interSchoolEvent}/update-settings', [SchoolInterSchoolEventController::class, 'updateSettings'])->name('update-settings');
+            Route::get('/{interSchoolEvent}/manage-students', [SchoolInterSchoolEventController::class, 'manageStudents'])->name('manage-students');
+            Route::post('/{interSchoolEvent}/students/{student}/approve', [SchoolInterSchoolEventController::class, 'approveStudent'])->name('approve-student');
+            Route::delete('/{interSchoolEvent}/students/{student}', [SchoolInterSchoolEventController::class, 'removeStudent'])->name('remove-student');
+        });
     });
 
     // Issuer, School Admin, and Super Admin routes (Certificate Issuance)
@@ -204,5 +225,13 @@ Route::middleware(['student.auth'])->prefix('student')->name('student.')->group(
 
         // AJAX endpoint for checking username availability
         Route::post('/check-username', [StudentProfileController::class, 'checkUsername'])->name('check-username');
+    });
+
+    // Inter-School Events (Student)
+    Route::prefix('inter-school-events')->name('inter-school-events.')->group(function () {
+        Route::get('/', [StudentInterSchoolEventController::class, 'index'])->name('index');
+        Route::get('/my-events', [StudentInterSchoolEventController::class, 'myEvents'])->name('my-events');
+        Route::get('/{interSchoolEvent}', [StudentInterSchoolEventController::class, 'show'])->name('show');
+        Route::post('/{interSchoolEvent}/join', [StudentInterSchoolEventController::class, 'join'])->name('join');
     });
 });

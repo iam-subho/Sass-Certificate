@@ -17,6 +17,8 @@ class Certificate extends Model
         'school_id',
         'certificate_template_id',
         'event_id',
+        'certifiable_type',
+        'certifiable_id',
         'issuer_id',
         'issued_at',
         'is_valid',
@@ -86,11 +88,28 @@ class Certificate extends Model
     }
 
     /**
-     * Get the event/competition for this certificate.
+     * Get the event/competition for this certificate (legacy).
      */
     public function event()
     {
         return $this->belongsTo(Event::class);
+    }
+
+    /**
+     * Get the parent certifiable model (Event or InterSchoolEvent).
+     */
+    public function certifiable()
+    {
+        return $this->morphTo();
+    }
+
+    /**
+     * Get the event (works for both Event and InterSchoolEvent).
+     * This helper ensures backward compatibility.
+     */
+    public function getEvent()
+    {
+        return $this->certifiable ?? $this->event;
     }
 
     /**

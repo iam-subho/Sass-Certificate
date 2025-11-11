@@ -80,6 +80,29 @@ class Student extends Authenticatable
     }
 
     /**
+     * Get the inter-school events this student is participating in.
+     */
+    public function interSchoolEvents()
+    {
+        return $this->belongsToMany(InterSchoolEvent::class, 'inter_school_event_student')
+                    ->withPivot([
+                        'status',
+                        'school_id',
+                        'approved_by_school',
+                        'joined_at'
+                    ])
+                    ->withTimestamps();
+    }
+
+    /**
+     * Get inter-school events this student has joined.
+     */
+    public function joinedInterSchoolEvents()
+    {
+        return $this->interSchoolEvents()->wherePivot('status', 'joined');
+    }
+
+    /**
      * Get the student's full name.
      */
     public function getFullNameAttribute(): string
