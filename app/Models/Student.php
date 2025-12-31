@@ -103,6 +103,24 @@ class Student extends Authenticatable
     }
 
     /**
+     * Get the student's attribute assignments.
+     */
+    public function studentAttributes()
+    {
+        return $this->hasMany(StudentAttribute::class);
+    }
+
+    /**
+     * Get the student's attribute assignments with details.
+     */
+    public function attributeHistory()
+    {
+        return $this->studentAttributes()
+            ->with(['attribute', 'option', 'assignedByUser'])
+            ->orderBy('assigned_at', 'desc');
+    }
+
+    /**
      * Get the student's full name.
      */
     public function getFullNameAttribute(): string

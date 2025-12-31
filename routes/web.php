@@ -26,6 +26,9 @@ use App\Http\Controllers\Student\StudentPasswordResetController;
 use App\Http\Controllers\InterSchoolEventController;
 use App\Http\Controllers\SchoolInterSchoolEventController;
 use App\Http\Controllers\Student\StudentInterSchoolEventController;
+use App\Http\Controllers\AttributeController;
+use App\Http\Controllers\SchoolAttributeController;
+use App\Http\Controllers\StudentAttributeController;
 
 // Public routes
 Route::get('/', function () {
@@ -95,6 +98,10 @@ Route::middleware('auth')->group(function () {
         Route::get('/inter-school-events/{interSchoolEvent}/schools', [InterSchoolEventController::class, 'schools'])->name('inter-school-events.schools');
         Route::get('/inter-school-events/{interSchoolEvent}/students', [InterSchoolEventController::class, 'students'])->name('inter-school-events.students');
         Route::post('/inter-school-events/{interSchoolEvent}/publish', [InterSchoolEventController::class, 'publish'])->name('inter-school-events.publish');
+
+        // Global Attributes Management (Super Admin only)
+        Route::resource('attributes', AttributeController::class);
+        Route::post('/attributes/{attribute}/toggle-status', [AttributeController::class, 'toggle'])->name('attributes.toggle-status');
     });
 
     // API endpoint for getting class sections (accessible to all authenticated users)
@@ -137,6 +144,10 @@ Route::middleware('auth')->group(function () {
             Route::post('/{interSchoolEvent}/students/{student}/approve', [SchoolInterSchoolEventController::class, 'approveStudent'])->name('approve-student');
             Route::delete('/{interSchoolEvent}/students/{student}', [SchoolInterSchoolEventController::class, 'removeStudent'])->name('remove-student');
         });
+
+        // School-Specific Attributes Management
+        Route::resource('school-attributes', SchoolAttributeController::class);
+        Route::post('/school-attributes/{school_attribute}/toggle-status', [SchoolAttributeController::class, 'toggle'])->name('school-attributes.toggle-status');
     });
 
     // Issuer, School Admin, and Super Admin routes (Certificate Issuance)
@@ -184,6 +195,22 @@ Route::middleware('auth')->group(function () {
         // Invoice management (accessible to both Super Admin and School Admin)
         Route::resource('invoices', InvoiceController::class)->only(['index', 'show', 'edit', 'update']);
         Route::get('/invoices/{invoice}/download', [InvoiceController::class, 'download'])->name('invoices.download');
+
+        // Student Attribute Assignments
+        Route::prefix('student-attributes')->name('student-attributes.')->group(function () {
+            Route::get('/', [StudentAttributeController::class, 'index'])->name('index');
+            Route::get('/create/{student}', [StudentAttributeController::class, 'create'])->name('create');
+            Route::post('/store/{student}', [StudentAttributeController::class, 'store'])->name('store');
+            Route::get('/history/{student}', [StudentAttributeController::class, 'history'])->name('history');
+            Route::get('/{studentAttribute}/edit', [StudentAttributeController::class, 'edit'])->name('edit');
+            Route::put('/{studentAttribute}', [StudentAttributeController::class, 'update'])->name('update');
+            Route::delete('/{studentAttribute}', [StudentAttributeController::class, 'destroy'])->name('destroy');
+
+            // Bulk Import
+            Route::get('/import/form', [StudentAttributeController::class, 'importForm'])->name('import.form');
+            Route::post('/import', [StudentAttributeController::class, 'import'])->name('import');
+            Route::get('/import/template', [StudentAttributeController::class, 'downloadTemplate'])->name('import.template');
+        });
     });
 });
 
@@ -217,6 +244,7 @@ Route::middleware(['student.auth'])->prefix('student')->name('student.')->group(
 
     // Dashboard
     Route::get('/dashboard', [StudentDashboardController::class, 'index'])->name('dashboard');
+    Route::get('/history', [StudentDashboardController::class, 'history'])->name('history');
 
     // Certificate Visibility Toggle
     Route::post('/certificates/{certificate}/toggle-visibility', [StudentDashboardController::class, 'toggleCertificateVisibility'])

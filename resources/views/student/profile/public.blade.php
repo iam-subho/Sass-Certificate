@@ -5,6 +5,11 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{{ $student->full_name }} - Student Profile</title>
     @vite(['resources/css/app.css', 'resources/js/app.js'])
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <style>
+        [x-cloak] { display: none !important; }
+    </style>
 
     <!-- Open Graph Meta Tags -->
     <meta property="og:title" content="{{ $student->full_name }} - Student Profile">
@@ -112,6 +117,208 @@
                 <h2 class="text-2xl font-bold text-gray-900 mb-4">About</h2>
                 <p class="text-gray-700 whitespace-pre-line">{{ $student->bio }}</p>
             </div>
+        @endif
+
+        <!-- Attribute Progress Section -->
+        @if(count($attributeSummary) > 0)
+            <div class="bg-white rounded-lg shadow-md p-6 mb-8">
+                <h2 class="text-2xl font-bold text-gray-900 mb-6">Progress & Attributes</h2>
+
+                <!-- Summary Cards -->
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+                    @foreach($attributeSummary as $attr)
+                        <div class="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-lg p-4 border border-blue-100">
+                            <h4 class="text-xs font-medium text-gray-500 uppercase tracking-wide">{{ $attr['attribute_name'] }}</h4>
+                            <p class="text-2xl font-bold text-blue-600 mt-1">{{ $attr['latest_value'] }}</p>
+                            <p class="text-xs text-gray-500 mt-1">
+                                Avg: {{ $attr['avg_score'] ?? 'N/A' }} | {{ $attr['total_assignments'] }} records
+                            </p>
+                        </div>
+                    @endforeach
+                </div>
+
+                <!-- Chart Section -->
+                @if(count($chartData['attributes']) > 0)
+                    <div x-data="{ activeTab: 'combined' }">
+                        <!-- Tab Navigation -->
+                        <div class="border-b border-gray-200 mb-6">
+                            <nav class="-mb-px flex space-x-8 overflow-x-auto" aria-label="Tabs">
+                                <button @click="activeTab = 'combined'"
+                                        :class="activeTab === 'combined' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'"
+                                        class="whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition">
+                                    Combined View
+                                </button>
+                                @foreach($chartData['attributes'] as $attr)
+                                    <button @click="activeTab = 'attr_{{ $attr['id'] }}'"
+                                            :class="activeTab === 'attr_{{ $attr['id'] }}' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'"
+                                            class="whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition">
+                                        {{ $attr['name'] }}
+                                    </button>
+                                @endforeach
+                            </nav>
+                        </div>
+
+                        <!-- Combined Chart -->
+                        <div x-show="activeTab === 'combined'" x-cloak>
+                            <div class="h-80">
+                                <canvas id="combinedChart"></canvas>
+                            </div>
+                            @if($chartData['hasMoreData'])
+                                <p class="text-xs text-gray-500 mt-2 text-center">
+                                    Showing latest {{ $chartData['maxPoints'] }} data points per attribute.
+                                </p>
+                            @endif
+                        </div>
+
+                        <!-- Individual Attribute Charts -->
+                        @foreach($chartData['attributes'] as $attr)
+                            <div x-show="activeTab === 'attr_{{ $attr['id'] }}'" x-cloak>
+                                <div class="h-80">
+                                    <canvas id="chart_{{ $attr['id'] }}"></canvas>
+                                </div>
+                                @if($attr['truncated'])
+                                    <p class="text-xs text-gray-500 mt-2 text-center">
+                                        Showing latest {{ count($attr['data']) }} of {{ $attr['totalCount'] }} data points.
+                                    </p>
+                                @endif
+                            </div>
+                        @endforeach
+                    </div>
+                @endif
+            </div>
+
+            <script>
+                document.addEventListener('DOMContentLoaded', function() {
+                    const chartData = @json($chartData);
+
+                    if (chartData.attributes.length === 0) return;
+
+                    // Combined Chart
+                    const combinedCtx = document.getElementById('combinedChart');
+                    if (combinedCtx) {
+                        const datasets = chartData.attributes.map(attr => ({
+                            label: attr.name,
+                            data: attr.data,
+                            borderColor: attr.color,
+                            backgroundColor: attr.color + '20',
+                            tension: 0.3,
+                            fill: false,
+                            pointRadius: 4,
+                            pointHoverRadius: 6
+                        }));
+
+                        // Use first attribute's labels for combined chart
+                        const labels = chartData.attributes[0].labels;
+
+                        new Chart(combinedCtx, {
+                            type: 'line',
+                            data: {
+                                labels: labels,
+                                datasets: datasets
+                            },
+                            options: {
+                                responsive: true,
+                                maintainAspectRatio: false,
+                                interaction: {
+                                    intersect: false,
+                                    mode: 'index'
+                                },
+                                plugins: {
+                                    legend: {
+                                        position: 'top',
+                                        labels: {
+                                            usePointStyle: true,
+                                            padding: 15
+                                        }
+                                    },
+                                    tooltip: {
+                                        backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                                        padding: 12,
+                                        callbacks: {
+                                            label: function(context) {
+                                                const attr = chartData.attributes[context.datasetIndex];
+                                                const tooltip = attr.tooltips[context.dataIndex];
+                                                return `${attr.name}: ${tooltip}`;
+                                            }
+                                        }
+                                    }
+                                },
+                                scales: {
+                                    y: {
+                                        beginAtZero: true,
+                                        grid: {
+                                            color: 'rgba(0, 0, 0, 0.05)'
+                                        }
+                                    },
+                                    x: {
+                                        grid: {
+                                            display: false
+                                        }
+                                    }
+                                }
+                            }
+                        });
+                    }
+
+                    // Individual Charts
+                    chartData.attributes.forEach(attr => {
+                        const ctx = document.getElementById('chart_' + attr.id);
+                        if (!ctx) return;
+
+                        new Chart(ctx, {
+                            type: 'line',
+                            data: {
+                                labels: attr.labels,
+                                datasets: [{
+                                    label: attr.name,
+                                    data: attr.data,
+                                    borderColor: attr.color,
+                                    backgroundColor: attr.color + '20',
+                                    tension: 0.3,
+                                    fill: true,
+                                    pointRadius: 5,
+                                    pointHoverRadius: 8
+                                }]
+                            },
+                            options: {
+                                responsive: true,
+                                maintainAspectRatio: false,
+                                plugins: {
+                                    legend: {
+                                        display: false
+                                    },
+                                    tooltip: {
+                                        backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                                        padding: 12,
+                                        callbacks: {
+                                            label: function(context) {
+                                                return `${attr.name}: ${attr.tooltips[context.dataIndex]}`;
+                                            }
+                                        }
+                                    }
+                                },
+                                scales: {
+                                    y: {
+                                        min: attr.min,
+                                        max: attr.max,
+                                        grid: {
+                                            color: 'rgba(0, 0, 0, 0.05)'
+                                        },
+                                        ticks: {
+                                            stepSize: attr.type === 'enum' ? 1 : undefined
+                                        }
+                                    },
+                                    x: {
+                                        grid: {
+                                            display: false
+                                        }
+                                    }
+                                }
+                            }
+                        });
+                    });
+                });
+            </script>
         @endif
 
         <!-- Certificates Section -->

@@ -3,11 +3,18 @@
 namespace App\Http\Controllers\Student;
 
 use App\Http\Controllers\Controller;
+use App\Services\StudentAttributeService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
 class StudentDashboardController extends Controller
 {
+    protected StudentAttributeService $attributeService;
+
+    public function __construct(StudentAttributeService $attributeService)
+    {
+        $this->attributeService = $attributeService;
+    }
     /**
      * Display the student dashboard.
      */
@@ -55,5 +62,38 @@ class StudentDashboardController extends Controller
         $status = $certificate->visible_on_profile ? 'visible' : 'hidden';
 
         return back()->with('success', "Certificate is now {$status} on your public profile.");
+    }
+
+    /**
+     * Display the student's attribute history with charts.
+     */
+    public function history(Request $request)
+    {
+        $student = Auth::guard('student')->user();
+
+        // Get available attributes for filter dropdown
+        $attributes = $this->attributeService->getAvailableAttributes($student->school_id);
+
+        // Get paginated history
+        $assignments = $this->attributeService->getHistory(
+            $student->id,
+            $request->input('attribute_id'),
+            $request->input('from_date'),
+            $request->input('to_date')
+        );
+
+        // Get chart data
+        $chartData = $this->attributeService->getChartData(
+            $student->id,
+            $student->school_id,
+            $request->input('attribute_id'),
+            $request->input('from_date'),
+            $request->input('to_date')
+        );
+
+        // Get summary statistics
+        $summary = $this->attributeService->getAttributeSummary($student->id);
+
+        return view('student.attributes.history', compact('student', 'attributes', 'assignments', 'chartData', 'summary'));
     }
 }

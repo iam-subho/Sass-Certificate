@@ -3,10 +3,18 @@
 namespace App\Http\Controllers;
 
 use App\Models\Student;
+use App\Services\StudentAttributeService;
 use Illuminate\Http\Request;
 
 class PublicProfileController extends Controller
 {
+    protected StudentAttributeService $attributeService;
+
+    public function __construct(StudentAttributeService $attributeService)
+    {
+        $this->attributeService = $attributeService;
+    }
+
     /**
      * Display the public profile of a student.
      */
@@ -26,6 +34,10 @@ class PublicProfileController extends Controller
             ->with(['template', 'event', 'school'])
             ->paginate(12);
 
-        return view('student.profile.public', compact('student', 'certificates'));
+        // Get attribute chart data and summary for public profile
+        $chartData = $this->attributeService->getChartData($student->id, $student->school_id);
+        $attributeSummary = $this->attributeService->getAttributeSummary($student->id);
+
+        return view('student.profile.public', compact('student', 'certificates', 'chartData', 'attributeSummary'));
     }
 }

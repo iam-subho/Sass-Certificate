@@ -21,15 +21,15 @@ class StudentInterSchoolEventController extends Controller
         // Get events that the student's school has joined
         $events = InterSchoolEvent::published()
                     ->whereHas('schools', function ($query) use ($schoolId) {
-                        $query->where('school_id', $schoolId)
-                              ->where('status', 'joined');
+                        $query->where('inter_school_event_school.school_id', $schoolId)
+                              ->where('inter_school_event_school.status', 'joined');
                     })
                     ->with(['schools' => function ($query) use ($schoolId) {
-                        $query->where('school_id', $schoolId)
+                        $query->where('inter_school_event_school.school_id', $schoolId)
                               ->withPivot(['can_students_join', 'allowed_classes', 'manual_approval_required']);
                     }])
                     ->withCount(['students' => function ($query) use ($schoolId) {
-                        $query->where('school_id', $schoolId);
+                        $query->where('students.school_id', $schoolId);
                     }])
                     ->latest('start_date')
                     ->get();

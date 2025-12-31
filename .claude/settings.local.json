@@ -11,7 +11,8 @@
       "Bash(\"C:\\Users\\subho\\.config\\herd\\bin\\php.bat\" artisan make:controller SchoolInterSchoolEventController)",
       "Bash(\"C:\\Users\\subho\\.config\\herd\\bin\\php.bat\" artisan make:controller Student/StudentInterSchoolEventController)",
       "Bash(npm install:*)",
-      "Bash(npm run build:*)"
+      "Bash(npm run build:*)",
+      "Bash(dir \"C:\\\\HERD_PROJECT\\\\cert\" /s /b /ad)"
     ],
     "deny": [],
     "ask": []
